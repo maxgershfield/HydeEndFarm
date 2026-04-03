@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fighter Passport — The Union</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gold:        #c9a84c;
+      --gold2:       #e8c97a;
+      --gold-glow:   rgba(201,168,76,0.18);
+      --gold-border: rgba(201,168,76,0.32);
+      --red:         #e85555;
+      --cyan:        #4dd9ff;
+      --green:       #4dffaa;
+      --dim:         rgba(255,255,255,0.42);
+      --panel-bg:    rgba(4,5,12,0.78);
+      --void:        #020309;
+      --mono:        'Share Tech Mono', monospace;
+      --display:     'Orbitron', monospace;
+      --bar-h:       44px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--void);
+      color: #e2ddd8;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    /* ── 3D canvas ── */
+    #viewport {
+      position: fixed; inset: 0; z-index: 0;
+    }
+
+    /* ── Vignette ── */
+    #vignette {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(ellipse at center,
+        transparent 30%,
+        rgba(2,3,9,0.55) 70%,
+        rgba(2,3,9,0.88) 100%
+      );
+    }
+
+    /* ── Scanlines ── */
+    #scanlines {
+      position: fixed; inset: 0; z-index: 2; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px
+      );
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed; inset: 0; z-index: 3;
+      display: flex; flex-direction: column;
+      pointer-events: none;
+    }
+    #hud > * { pointer-events: auto; }
+
+
+    /* ── Top bar ── */
+    #top-bar {
+      height: var(--bar-h);
+      background: rgba(4,5,14,0.92);
+      border-bottom: 1px solid var(--gold-border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.4rem;
+      flex-shrink: 0;
+      gap: 1rem;
+    }
+    .tb-section { display: flex; align-items: center; gap: 0.7rem; }
+    .tb-logo {
+      font-family: var(--display); font-size: 0.72rem; font-weight: 900;
+      color: var(--gold2); letter-spacing: 0.22em; text-transform: uppercase;
+    }
+    .tb-sep { color: var(--gold-border); }
+    .tb-sub { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase; }
+    .tb-center {
+      font-family: var(--display); font-size: 0.58rem; letter-spacing: 0.22em;
+      color: var(--gold); text-transform: uppercase;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    #tb-clock { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.1em; }
+    .tier-badge {
+      font-size: 0.54rem; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 0.18rem 0.65rem;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: var(--display);
+    }
+    .tier-badge.fighter { border-color: var(--cyan);  color: var(--cyan); }
+    .tier-badge.veteran { border-color: var(--green); color: var(--green); }
+    .tier-badge.legend  { border-color: var(--gold2); color: var(--gold2); box-shadow: 0 0 8px rgba(232,201,122,0.3); }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+      animation: blink 2.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* ── Main grid ── */
+    #grid {
+      flex: 1; overflow: hidden;
+      display: grid;
+      grid-template-columns: 240px 1fr 220px;
+      gap: 0.5rem; padding: 0.5rem;
+    }
+
+    /* ── Columns ── */
+    .col {
+      display: flex; flex-direction: column; gap: 0.55rem;
+      overflow-y: auto; overflow-x: hidden; min-width: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(201,168,76,0.25) transparent;
+    }
+    .col::-webkit-scrollbar { width: 3px; }
+    .col::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); }
+
+    /* center col is see-through to the 3D scene */
+    #col-center { pointer-events: none; }
+    #col-center > * { pointer-events: auto; }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--gold-border);
+      box-shadow: inset 0 0 22px var(--gold-glow), 0 0 14px rgba(0,0,0,0.5);
+      padding: 0.75rem 0.85rem;
+      backdrop-filter: blur(10px);
+      position: relative; overflow: hidden;
+    }
+    .panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.6;
+    }
+    .panel-hdr {
+      font-family: var(--display); font-size: 0.58rem; font-weight: 700;
+      letter-spacing: 0.2em; color: var(--gold); text-transform: uppercase;
+      padding-bottom: 0.5rem; margin-bottom: 0.55rem;
+      border-bottom: 1px solid rgba(201,168,76,0.18);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-hdr-tag {
+      font-size: 0.52rem; color: var(--dim); letter-spacing: 0.1em;
+      font-family: var(--mono);
+    }
+
+    /* ── Stat rows ── */
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 0.4rem; padding: 0.22rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .lbl { font-size: 9px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+    .val { font-size: 11px; color: #e2ddd8; text-align: right; }
+    .val.gold  { color: var(--gold2); }
+    .val.green { color: var(--green); }
+    .val.cyan  { color: var(--cyan); }
+    .val.red   { color: var(--red); }
+    .val.lg    { font-size: 1.1rem; font-family: var(--display); font-weight: 700; }
+    .val.badge {
+      display: inline-block; padding: 0.1rem 0.4rem;
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      border: 1px solid currentColor;
+    }
+    .val.badge.green { color: var(--green); }
+    .val.badge.gold  { color: var(--gold); }
+    .val.badge.cyan  { color: var(--cyan); }
+    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0.5rem 0; }
+
+    /* ── Avatar circle ── */
+    #av-wrap { text-align: center; padding-bottom: 0.6rem; }
+    #av-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      margin: 0 auto 0.5rem;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-size: 1.5rem; font-weight: 900;
+      color: rgba(0,0,0,0.65);
+      border: 2px solid rgba(201,168,76,0.5);
+      box-shadow: 0 0 24px rgba(201,168,76,0.22), inset 0 0 12px rgba(201,168,76,0.1);
+      background: linear-gradient(135deg, #2a1f0a, #3d2e12);
+      position: relative;
+    }
+    #av-ring::after {
+      content: '';
+      position: absolute; inset: -4px; border-radius: 50%;
+      border: 1px solid rgba(201,168,76,0.18);
+    }
+    #av-name {
+      font-family: var(--display); font-size: 0.88rem; font-weight: 700;
+      color: var(--gold2); letter-spacing: 0.08em;
+    }
+    #av-location { font-size: 0.62rem; color: var(--dim); margin-top: 0.2rem; letter-spacing: 0.08em; }
+    #av-since    { font-size: 0.6rem; color: var(--dim); margin-top: 0.1rem; }
+
+    /* ── Token gauge ── */
+    .gauge-wrap { position: relative; width: 96px; height: 96px; margin: 0.3rem auto 0.5rem; }
+    #karma-svg { width: 96px; height: 96px; }
+    .gauge-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .gauge-val { font-family: var(--display); font-size: 1.05rem; font-weight: 700; color: var(--gold2); }
+    .gauge-lbl { font-size: 0.54rem; letter-spacing: 0.18em; color: var(--dim); text-transform: uppercase; }
+
+    /* ── Progress bar ── */
+    .prog-wrap { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .prog-track { flex: 1; height: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .prog-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      box-shadow: 0 0 6px var(--gold);
+      transition: width 1.2s ease;
+    }
+    .prog-fill.cyan  { background: var(--cyan);  box-shadow: 0 0 6px var(--cyan); }
+    .prog-fill.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .prog-pct { font-size: 9px; color: var(--dim); white-space: nowrap; }
+
+    /* ── Chapter stamps ── */
+    .stamps-grid { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem; }
+    .stamp {
+      padding: 0.22rem 0.6rem; font-size: 0.58rem; letter-spacing: 0.12em;
+      border: 1px solid rgba(201,168,76,0.35);
+      color: var(--gold); text-transform: uppercase; font-family: var(--display);
+      position: relative; overflow: hidden;
+    }
+    .stamp.earned {
+      border-color: var(--gold);
+      background: rgba(201,168,76,0.08);
+      box-shadow: 0 0 8px rgba(201,168,76,0.15);
+    }
+    .stamp.locked { opacity: 0.3; border-style: dashed; }
+
+    /* ── Quest list ── */
+    .quest-item {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .quest-item:last-child { border-bottom: none; }
+    .quest-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+      background: var(--dim);
+    }
+    .quest-dot.done  { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .quest-dot.active { background: var(--gold); box-shadow: 0 0 5px var(--gold); animation: blink 1.8s ease-in-out infinite; }
+    .quest-name { font-size: 0.68rem; color: #e2ddd8; line-height: 1.3; }
+    .quest-meta { font-size: 0.58rem; color: var(--dim); margin-top: 0.1rem; }
+    .quest-reward { font-size: 0.6rem; color: var(--gold); margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Activity feed ── */
+    .feed-item {
+      display: flex; align-items: baseline; gap: 0.5rem;
+      padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.65rem;
+    }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-ts { color: var(--dim); white-space: nowrap; flex-shrink: 0; font-size: 0.58rem; }
+    .feed-msg { color: #ccc; flex: 1; }
+    .feed-pts { color: var(--gold); white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Center overlay panels ── */
+    #center-top {
+      display: flex; gap: 0.5rem; flex-shrink: 0;
+    }
+    #center-bottom { flex-shrink: 0; }
+    #center-mid { flex: 1; } /* transparent gap showing 3D scene */
+
+    .center-stat {
+      flex: 1; padding: 0.6rem 0.8rem;
+      background: rgba(4,5,12,0.72);
+      border: 1px solid var(--gold-border);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      position: relative;
+    }
+    .center-stat::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0.5;
+    }
+    .center-stat .big-num {
+      font-family: var(--display); font-size: 1.6rem; font-weight: 900;
+      line-height: 1; color: var(--gold2);
+    }
+    .center-stat .big-lbl {
+      font-size: 0.56rem; letter-spacing: 0.18em; color: var(--dim);
+      text-transform: uppercase; margin-top: 0.2rem;
+    }
+
+    /* ── Ticker ── */
+    #ticker {
+      height: 28px; overflow: hidden;
+      background: rgba(4,5,12,0.88);
+      border-top: 1px solid var(--gold-border);
+      border-bottom: 1px solid var(--gold-border);
+      display: flex; align-items: center;
+      flex-shrink: 0;
+    }
+    #ticker-label {
+      padding: 0 0.8rem;
+      font-family: var(--display); font-size: 0.52rem; font-weight: 700;
+      letter-spacing: 0.15em; color: var(--gold);
+      border-right: 1px solid var(--gold-border);
+      white-space: nowrap;
+    }
+    #ticker-track { flex: 1; overflow: hidden; position: relative; }
+    #ticker-scroll {
+      white-space: nowrap;
+      font-size: 0.6rem; color: var(--dim); letter-spacing: 0.06em;
+      animation: ticker-scroll 28s linear infinite;
+      display: inline-block; padding-left: 100%;
+    }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* ── Loading overlay ── */
+    #loading {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--void);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1.2rem;
+      transition: opacity 0.8s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    .load-logo {
+      font-family: var(--display); font-size: 1.4rem; font-weight: 900;
+      letter-spacing: 0.3em; color: var(--gold2);
+    }
+    .load-sub {
+      font-size: 0.62rem; letter-spacing: 0.2em; color: var(--dim); text-transform: uppercase;
+    }
+    .load-bar-wrap { width: 200px; height: 2px; background: rgba(201,168,76,0.15); }
+    .load-bar { height: 100%; background: var(--gold); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 8px var(--gold); }
+    .load-status { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.12em; }
+
+    /* ── Drag hint ── */
+    #drag-hint {
+      position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+      z-index: 4;
+      font-size: 0.58rem; color: rgba(201,168,76,0.4); letter-spacing: 0.14em;
+      text-transform: uppercase; pointer-events: none;
+      transition: opacity 1s ease;
+    }
+    #drag-hint.hide { opacity: 0; }
+
+    /* ════════════════════════════════════════════
+       RESPONSIVE — tablet (≤ 900px)
+    ════════════════════════════════════════════ */
+    @media (max-width: 900px) {
+      #grid { grid-template-columns: 200px 1fr 185px; }
+    }
+
+    /* ════════════════════════════════════════════
+       RESPONSIVE — mobile (≤ 640px)
+       Single-column, top-bar fixed, grid scrolls
+    ════════════════════════════════════════════ */
+    @media (max-width: 640px) {
+
+      /* ── Top bar: compact ── */
+      #top-bar {
+        height: 40px; padding: 0 0.75rem; gap: 0.4rem;
+      }
+      .tb-center { display: none; }
+      .tb-sep    { display: none; }
+      .tb-sub    { display: none; }
+      #tb-clock  { display: none; }
+      .tb-logo   { font-size: 0.65rem; letter-spacing: 0.14em; }
+      .tier-badge { font-size: 0.5rem; padding: 0.15rem 0.5rem; }
+
+      /* ── HUD body: let the grid div scroll ── */
+      #hud { overflow: hidden; }
+
+      /* ── Grid → single column scrollable ── */
+      #grid {
+        display: block !important;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0.45rem;
+        /* height = viewport minus top-bar (40px) and ticker (28px) */
+        height: calc(100% - 40px - 28px);
+      }
+
+      /* ── All three cols: full width, visible ── */
+      .col {
+        width: 100%;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        margin-bottom: 0.45rem;
+      }
+      .col:last-child { margin-bottom: 0; }
+
+      /* ── Reorder: stats → identity/tier/stamps → tokens/quests → activity ── */
+      #col-center { order: 0; }
+      #col-left   { order: 1; }
+      #col-right  { order: 2; }
+
+      /* ── Center: hide the transparent gap, keep stats + feed ── */
+      #center-mid    { display: none; }
+      #center-bottom { order: 10; } /* activity feed goes last inside center */
+
+      /* ── Stats strip: 2×2 grid ── */
+      #center-top {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+      }
+      .center-stat          { padding: 0.55rem 0.5rem; }
+      .center-stat .big-num { font-size: 1.25rem; }
+      .center-stat .big-lbl { font-size: 0.5rem; }
+
+      /* ── Identity: horizontal layout ── */
+      #av-wrap {
+        display: flex; align-items: center; gap: 0.75rem;
+        text-align: left; padding-bottom: 0.4rem;
+      }
+      #av-ring      { margin: 0; width: 54px; height: 54px; font-size: 1.1rem; flex-shrink: 0; }
+      #av-ring::after { inset: -3px; }
+      #av-name      { font-size: 0.8rem; }
+      #av-location  { font-size: 0.58rem; }
+      #av-since     { font-size: 0.56rem; }
+
+      /* ── Token gauge: smaller ── */
+      .gauge-wrap  { width: 80px; height: 80px; }
+      #karma-svg   { width: 80px; height: 80px; }
+      .gauge-val   { font-size: 0.9rem; }
+
+      /* ── Panels: tighter padding ── */
+      .panel      { padding: 0.6rem 0.7rem; }
+      .panel-hdr  { font-size: 0.55rem; padding-bottom: 0.38rem; margin-bottom: 0.38rem; }
+
+      /* ── Ticker: slim on mobile ── */
+      #ticker { height: 24px; }
+      #ticker-label { font-size: 0.48rem; padding: 0 0.6rem; }
+      #ticker-scroll { font-size: 0.55rem; }
+
+      /* ── Stronger vignette so panels pop ── */
+      #vignette {
+        background: radial-gradient(ellipse at center,
+          rgba(2,3,9,0.2) 0%,
+          rgba(2,3,9,0.65) 55%,
+          rgba(2,3,9,0.93) 100%
+        );
+      }
+
+      /* ── Drag hint ── */
+      #drag-hint { bottom: 30px; font-size: 0.5rem; }
+    }
+
+    /* ════════════════════════════════════════════
+       RESPONSIVE — very small (≤ 380px)
+    ════════════════════════════════════════════ */
+    @media (max-width: 380px) {
+      .center-stat .big-num { font-size: 1.05rem; }
+      #av-ring     { width: 46px; height: 46px; font-size: 0.95rem; }
+      .tb-logo     { font-size: 0.58rem; }
+      .tier-badge  { font-size: 0.44rem; }
+      .lbl         { font-size: 8px; }
+      .val         { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading screen -->
+<div id="loading">
+  <div class="load-logo">THE UNION</div>
+  <div class="load-sub">Initialising Fighter Passport</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
+  <div class="load-status" id="load-status">Generating dojo environment…</div>
+</div>
+
+<!-- Three.js viewport -->
+<div id="viewport"></div>
+
+<!-- Vignette + scanlines -->
+<div id="vignette"></div>
+<div id="scanlines"></div>
+
+<!-- Drag hint -->
+<div id="drag-hint">drag to look around</div>
+
+<!-- HUD -->
+<div id="hud">
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div class="tb-section">
+      <span class="tb-logo">The Union</span>
+      <span class="tb-sep">|</span>
+      <span class="tb-sub">Fighter Passport</span>
+    </div>
+    <div class="tb-center">
+      <div class="status-dot"></div>
+      <span id="tb-system">OASIS IDENTITY ACTIVE</span>
+    </div>
+    <div class="tb-section">
+      <span id="tier-display" class="tier-badge fighter">⚔️ Fighter</span>
+      <span id="tb-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <!-- Main grid -->
+  <div id="grid">
+
+    <!-- LEFT — identity + tokens -->
+    <div class="col">
+
+      <!-- Identity -->
+      <div class="panel">
+        <div class="panel-hdr">Identity <span class="panel-hdr-tag">PDC-001</span></div>
+        <div id="av-wrap">
+          <div id="av-ring" style="background:linear-gradient(135deg,#2a1a06,#4a3010)">
+            <span id="av-initials">?</span>
+          </div>
+          <div id="av-name">—</div>
+          <div id="av-location">🐯 The Union PDC</div>
+          <div id="av-since">Member since <span id="member-since">—</span></div>
+        </div>
+        <div class="stat-row"><span class="lbl">Passport ID</span><span class="val mono cyan" id="passport-id">—</span></div>
+        <div class="stat-row"><span class="lbl">Chapter</span><span class="val gold">Playa del Carmen</span></div>
+        <div class="stat-row"><span class="lbl">Status</span><span class="val badge green" id="member-status">ACTIVE</span></div>
+        <div class="stat-row"><span class="lbl">Last check-in</span><span class="val" id="last-checkin">—</span></div>
+      </div>
+
+      <!-- Tier progress -->
+      <div class="panel">
+        <div class="panel-hdr">Tier Progress</div>
+        <div class="stat-row">
+          <span class="lbl">Current tier</span>
+          <span class="val badge fighter" id="tier-label">Fighter</span>
+        </div>
+        <div class="divider"></div>
+        <div class="stat-row" style="margin-bottom:0.3rem">
+          <span class="lbl">Sessions to Veteran</span>
+          <span class="val gold" id="sessions-to-next">—</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-track"><div class="prog-fill" id="tier-bar" style="width:0%"></div></div>
+          <span class="prog-pct" id="tier-pct">0%</span>
+        </div>
+        <div class="stat-row" style="margin-bottom:0.3rem">
+          <span class="lbl">Chapter circuit</span>
+          <span class="val cyan" id="chapter-pct">—</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-track"><div class="prog-fill cyan" id="chapter-bar" style="width:0%"></div></div>
+          <span class="prog-pct" id="chapter-bar-pct">0%</span>
+        </div>
+      </div>
+
+      <!-- Chapter stamps -->
+      <div class="panel">
+        <div class="panel-hdr">Chapter Stamps</div>
+        <div class="stamps-grid" id="stamps">
+          <div class="stamp earned">PDC</div>
+          <div class="stamp locked">Tulum</div>
+          <div class="stamp locked">Colombia</div>
+          <div class="stamp locked">UK</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CENTER — transparent to 3D + key stats top/bottom -->
+    <div class="col" id="col-center">
+
+      <!-- Top stats strip -->
+      <div id="center-top">
+        <div class="center-stat">
+          <div class="big-num" id="c-sessions">—</div>
+          <div class="big-lbl">Sessions</div>
+        </div>
+        <div class="center-stat">
+          <div class="big-num gold" id="c-tokens">—</div>
+          <div class="big-lbl">Union Tokens</div>
+        </div>
+        <div class="center-stat">
+          <div class="big-num cyan" id="c-quests">—</div>
+          <div class="big-lbl">Quests Done</div>
+        </div>
+        <div class="center-stat">
+          <div class="big-num green" id="c-stamps">1</div>
+          <div class="big-lbl">Chapter Stamps</div>
+        </div>
+      </div>
+
+      <!-- Gap to show 3D -->
+      <div id="center-mid"></div>
+
+      <!-- Bottom — recent activity -->
+      <div class="panel" id="center-bottom">
+        <div class="panel-hdr">Recent Activity <span class="panel-hdr-tag" id="feed-count">0 events</span></div>
+        <div id="activity-feed">
+          <div class="feed-item">
+            <span class="feed-ts">—</span>
+            <span class="feed-msg">Loading activity log…</span>
+            <span class="feed-pts"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT — tokens + quests -->
+    <div class="col">
+
+      <!-- Token balance -->
+      <div class="panel">
+        <div class="panel-hdr">Union Tokens</div>
+        <div class="gauge-wrap">
+          <svg id="karma-svg" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="40" fill="none"
+              stroke="rgba(201,168,76,0.12)" stroke-width="6"/>
+            <circle cx="48" cy="48" r="40" fill="none"
+              stroke="url(#goldGrad)" stroke-width="6"
+              stroke-linecap="round"
+              stroke-dasharray="251.2"
+              stroke-dashoffset="251.2"
+              id="karma-arc"
+              transform="rotate(-90 48 48)"/>
+            <defs>
+              <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#c9a84c"/>
+                <stop offset="100%" stop-color="#e8c97a"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-val" id="karma-val">0</span>
+            <span class="gauge-lbl">tokens</span>
+          </div>
+        </div>
+        <div class="stat-row"><span class="lbl">Earned all-time</span><span class="val gold" id="karma-total">—</span></div>
+        <div class="stat-row"><span class="lbl">Redeemed</span><span class="val" id="karma-spent">—</span></div>
+        <div class="divider"></div>
+        <div class="stat-row"><span class="lbl">Next reward</span><span class="val gold" id="next-reward">500 → 20% off</span></div>
+        <div class="prog-wrap">
+          <div class="prog-track">
+            <div class="prog-fill gold" id="reward-bar" style="width:0%"></div>
+          </div>
+          <span class="prog-pct" id="reward-pct">0/500</span>
+        </div>
+      </div>
+
+      <!-- Active quests -->
+      <div class="panel">
+        <div class="panel-hdr">Active Quests</div>
+        <div id="quest-list">
+          <div class="quest-item">
+            <div class="quest-dot active"></div>
+            <div>
+              <div class="quest-name">10 Sessions — First Blood</div>
+              <div class="quest-meta">Entry quest · <span id="q1-progress">? / 10 sessions</span></div>
+            </div>
+            <div class="quest-reward">+50 🪙</div>
+          </div>
+          <div class="quest-item">
+            <div class="quest-dot"></div>
+            <div>
+              <div class="quest-name">Leave a Google Review</div>
+              <div class="quest-meta">Community · 1 action needed</div>
+            </div>
+            <div class="quest-reward">+25 🪙</div>
+          </div>
+          <div class="quest-item">
+            <div class="quest-dot"></div>
+            <div>
+              <div class="quest-name">Refer a Member</div>
+              <div class="quest-meta">Community · Must train 3 months</div>
+            </div>
+            <div class="quest-reward">+500 🪙</div>
+          </div>
+          <div class="quest-item">
+            <div class="quest-dot"></div>
+            <div>
+              <div class="quest-name">50 Sessions — Fighter Status</div>
+              <div class="quest-meta">Intermediate · Unlocks cross-chapter</div>
+            </div>
+            <div class="quest-reward">+150 🪙</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Ticker -->
+  <div id="ticker">
+    <div id="ticker-label">LIVE</div>
+    <div id="ticker-track">
+      <div id="ticker-scroll" id="ticker-content">
+        THE UNION PDC · PLAYA DEL CARMEN · OFFICIAL FIGHTER PASSPORT SYSTEM ·
+        EARN TOKENS BY TRAINING · CROSS-CHAPTER QUESTS ACTIVE ·
+        TULUM CHAPTER COMING SOON · REP THE UNION ·
+        COMPLETE QUESTS TO UNLOCK STORE DISCOUNTS ·
+        FIGHTER PASSPORT POWERED BY OASIS STAR ·
+      </div>
+    </div>
+  </div>
+
+</div><!-- /hud -->
+
+<script type="importmap">
+  { "imports": {
+    "three": "https://esm.sh/three@0.160.0",
+    "three/addons/controls/OrbitControls.js": "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js"
+  } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Config ───────────────────────────────────────────────────────────────────
+const UNION_API    = (window.UNION_API_URL || 'https://union-api.railway.app');
+const MEDUSA_URL   = (window.MEDUSA_URL    || 'https://medusa-production-c8f4.up.railway.app');
+const BLOCKADE_KEY = 'g43W5b1ofFdj4hKNpBW5LwktyUVWtE65P8nBASULoEtD58awZTmteY33bYqU';
+
+// Pre-generated dojo skybox (Blockade Labs, job #15133914)
+const FALLBACK_SKYBOX = 'https://images.blockadelabs.com/images/imagine/M3_Photoreal_equirectangular-jpg_An_ancient_Japanese_dojo_5598412201_15133914.jpg?ver=1';
+
+// Passport data — read from URL params or mock
+const params    = new URLSearchParams(window.location.search);
+const avatarId  = params.get('avatarId') || null;
+const mockMode  = !avatarId; // Use demo data if no avatarId
+
+// ── Loading helpers ───────────────────────────────────────────────────────────
+const loadBar    = document.getElementById('load-bar');
+const loadStatus = document.getElementById('load-status');
+let loadPct      = 0;
+function setLoad(pct, msg) {
+  loadPct = pct;
+  loadBar.style.width = pct + '%';
+  if (msg) loadStatus.textContent = msg;
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function tickClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('tb-clock').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+// ── Three.js skybox ───────────────────────────────────────────────────────────
+function startViewer(skyboxUrl) {
+  const container = document.getElementById('viewport');
+  const scene    = new THREE.Scene();
+  const camera   = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(0, 0, 0.1);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  container.appendChild(renderer.domElement);
+
+  const loader = new THREE.TextureLoader();
+  loader.setCrossOrigin('anonymous');
+  loader.load(skyboxUrl,
+    (tex) => {
+      tex.mapping    = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      scene.background = tex;
+      setLoad(100, 'Passport loaded');
+      setTimeout(() => {
+        document.getElementById('loading').classList.add('fade-out');
+        setTimeout(() => document.getElementById('loading').style.display='none', 900);
+      }, 400);
+    },
+    undefined,
+    () => {
+      // Fallback: dark void
+      scene.background = new THREE.Color(0x020309);
+      setLoad(100);
+      document.getElementById('loading').classList.add('fade-out');
+      setTimeout(() => document.getElementById('loading').style.display='none', 900);
+    }
+  );
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.rotateSpeed   = 0.45;
+  controls.minDistance   = 0.01;
+  controls.maxDistance   = 0.5;
+  // Start facing into the dojo at a natural eye level
+  controls.target.set(0, 0, 0);
+
+  // Auto-rotate slowly for atmosphere
+  let autoRotate = true;
+  let autoAngle  = 0;
+  renderer.domElement.addEventListener('pointerdown', () => {
+    autoRotate = false;
+    document.getElementById('drag-hint').classList.add('hide');
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (autoRotate) {
+      autoAngle += 0.00012;
+      camera.position.x = Math.sin(autoAngle) * 0.1;
+      camera.position.z = Math.cos(autoAngle) * 0.1;
+      camera.lookAt(0, 0, 0);
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // Hide hint after 6s
+  setTimeout(() => document.getElementById('drag-hint').classList.add('hide'), 6000);
+}
+
+// ── Blockade skybox fetch / generate ─────────────────────────────────────────
+async function getSkybox() {
+  // Return the pre-generated dojo immediately — no need to call Blockade on every load
+  return FALLBACK_SKYBOX;
+
+  // eslint-disable-next-line no-unreachable
+  const cached = sessionStorage.getItem('union_dojo_skybox');
+  if (cached) return cached;
+
+  setLoad(20, 'Summoning the dojo…');
+
+  try {
+    // Generate via Blockade Labs
+    const genRes = await fetch('https://backend.blockadelabs.com/api/v1/skybox', {
+      method: 'POST',
+      headers: { 'x-api-key': BLOCKADE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'ancient japanese dojo interior, wooden floors, tatami mats, training weapons on wall racks, paper lanterns glowing amber, morning mist through shoji screens, mountains outside, cinematic moody lighting, martial arts temple',
+        skybox_style_id: 67,
+        enhance_prompt: true
+      })
+    });
+
+    if (!genRes.ok) throw new Error('Blockade gen failed: ' + genRes.status);
+    const gen = await genRes.json();
+    const id  = gen.id || gen.obfuscated_id;
+    if (!id) throw new Error('No ID from Blockade');
+
+    setLoad(35, 'Building dojo environment…');
+
+    // Poll for completion
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 3000));
+      setLoad(35 + i * 1.5, `Building dojo… ${Math.round((i/30)*100)}%`);
+
+      const pollRes = await fetch(`https://backend.blockadelabs.com/api/v1/imagine/requests/${id}`, {
+        headers: { 'x-api-key': BLOCKADE_KEY }
+      });
+      if (!pollRes.ok) continue;
+      const poll = await pollRes.json();
+      const req  = poll.request || poll;
+      const status = req.status || '';
+
+      if (status === 'complete' && req.file_url) {
+        sessionStorage.setItem('union_dojo_skybox', req.file_url);
+        return req.file_url;
+      }
+      if (status === 'error') break;
+    }
+  } catch (e) {
+    console.warn('Blockade skybox failed:', e.message, '— using fallback');
+  }
+
+  return FALLBACK_SKYBOX;
+}
+
+// ── Passport data ─────────────────────────────────────────────────────────────
+function mockPassport() {
+  return {
+    name: 'Demo Fighter',
+    avatarId: 'demo-001',
+    chapter: 'PDC',
+    memberSince: '2025-11',
+    lastCheckin: 'Today, 09:41',
+    tier: 'fighter',
+    sessions: 34,
+    tokens: 640,
+    tokensTotal: 890,
+    tokensSpent: 250,
+    questsDone: 3,
+    stamps: ['PDC'],
+    activity: [
+      { ts: '09:41', msg: 'Session logged — The Union PDC', pts: '+10 🪙' },
+      { ts: '09:41', msg: 'Quest progress: 10 Sessions (3/10)', pts: '' },
+      { ts: 'Yesterday', msg: 'Session logged — The Union PDC', pts: '+10 🪙' },
+      { ts: 'Mon', msg: 'Google Review submitted', pts: '+25 🪙' },
+      { ts: 'Sun', msg: 'Session logged — The Union PDC', pts: '+10 🪙' },
+      { ts: 'Sat', msg: 'Session logged — The Union PDC', pts: '+10 🪙' },
+    ]
+  };
+}
+
+async function fetchPassport(id) {
+  try {
+    const res = await fetch(`${UNION_API}/api/passport/${id}`);
+    if (!res.ok) throw new Error(res.status);
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// ── Render passport data into HUD ─────────────────────────────────────────────
+function renderPassport(p) {
+  // Avatar circle
+  const initials = (p.name || '?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('av-initials').textContent = initials;
+  document.getElementById('av-name').textContent     = p.name || '—';
+  document.getElementById('av-since').innerHTML      = `Member since <span id="member-since">${p.memberSince || '—'}</span>`;
+  document.getElementById('last-checkin').textContent = p.lastCheckin || '—';
+  document.getElementById('passport-id').textContent  = (p.avatarId || 'DEMO').slice(0,12).toUpperCase();
+
+  // Tier
+  const tier = (p.tier || 'recruit').toLowerCase();
+  const TIERS = { recruit: { label:'🥋 Recruit', cls:'', next: 50, sessTarget: 50 },
+                  fighter: { label:'⚔️ Fighter', cls:'fighter', next: 200, sessTarget: 200 },
+                  veteran: { label:'🦁 Veteran', cls:'veteran', next: 500, sessTarget: 500 },
+                  legend:  { label:'🐯 Legend',  cls:'legend',  next: null, sessTarget: null } };
+  const td = TIERS[tier] || TIERS.recruit;
+
+  document.getElementById('tier-label').textContent  = td.label;
+  document.getElementById('tier-label').className    = `val badge ${td.cls}`;
+  document.getElementById('tier-display').textContent = td.label;
+  document.getElementById('tier-display').className   = `tier-badge ${td.cls}`;
+
+  if (td.next) {
+    const sess = p.sessions || 0;
+    const pct  = Math.min(100, Math.round((sess / td.sessTarget) * 100));
+    document.getElementById('sessions-to-next').textContent = `${sess} / ${td.sessTarget}`;
+    document.getElementById('tier-bar').style.width         = pct + '%';
+    document.getElementById('tier-pct').textContent         = pct + '%';
+  }
+
+  // Chapter stamps
+  const allChapters = ['PDC', 'Tulum', 'Colombia', 'UK'];
+  const earned = new Set(p.stamps || ['PDC']);
+  const stampsEl = document.getElementById('stamps');
+  stampsEl.innerHTML = allChapters.map(ch => `
+    <div class="stamp ${earned.has(ch) ? 'earned' : 'locked'}">${ch}</div>
+  `).join('');
+
+  // Chapter bar (% of chapters visited)
+  const chapterPct = Math.round((earned.size / allChapters.length) * 100);
+  document.getElementById('chapter-pct').textContent    = `${earned.size} / ${allChapters.length} chapters`;
+  document.getElementById('chapter-bar').style.width    = chapterPct + '%';
+  document.getElementById('chapter-bar-pct').textContent = chapterPct + '%';
+
+  // Center stats
+  document.getElementById('c-sessions').textContent = p.sessions || 0;
+  document.getElementById('c-tokens').textContent   = p.tokens   || 0;
+  document.getElementById('c-quests').textContent   = p.questsDone || 0;
+  document.getElementById('c-stamps').textContent   = earned.size;
+
+  // Token gauge
+  const tokens     = p.tokens || 0;
+  const nextReward = 500;
+  const arc        = document.getElementById('karma-arc');
+  const circumference = 251.2;
+  const pctArc     = Math.min(1, tokens / 2000);
+  arc.style.strokeDashoffset = circumference * (1 - pctArc);
+  document.getElementById('karma-val').textContent   = tokens;
+  document.getElementById('karma-total').textContent = p.tokensTotal || tokens;
+  document.getElementById('karma-spent').textContent = p.tokensSpent || 0;
+
+  const toReward = Math.max(0, nextReward - tokens);
+  document.getElementById('next-reward').textContent = toReward > 0
+    ? `${toReward} more → 20% off store`
+    : '20% discount UNLOCKED ✓';
+  document.getElementById('reward-bar').style.width  = Math.min(100, Math.round((tokens/nextReward)*100)) + '%';
+  document.getElementById('reward-pct').textContent  = `${Math.min(tokens,nextReward)}/${nextReward}`;
+
+  // Quest progress
+  const sess = p.sessions || 0;
+  document.getElementById('q1-progress').textContent = `${Math.min(sess,10)} / 10 sessions`;
+  if (sess >= 10) {
+    document.querySelector('.quest-item .quest-dot').classList.remove('active');
+    document.querySelector('.quest-item .quest-dot').classList.add('done');
+  }
+
+  // Activity feed
+  const feed = p.activity || [];
+  const feedEl = document.getElementById('activity-feed');
+  feedEl.innerHTML = '';
+  if (feed.length === 0) {
+    feedEl.innerHTML = '<div class="feed-item"><span class="feed-msg" style="color:var(--dim)">No activity yet. Check in at the gym to start!</span></div>';
+  } else {
+    feed.forEach(ev => {
+      const div = document.createElement('div');
+      div.className = 'feed-item';
+      div.innerHTML = `
+        <span class="feed-ts">${ev.ts}</span>
+        <span class="feed-msg">${ev.msg}</span>
+        <span class="feed-pts">${ev.pts || ''}</span>
+      `;
+      feedEl.appendChild(div);
+    });
+  }
+  document.getElementById('feed-count').textContent = `${feed.length} events`;
+}
+
+// ── Main ───────────────────────────────────────────────────────────────────────
+(async () => {
+  setLoad(5, 'Authenticating passport…');
+
+  // Fetch passport data
+  let passport = null;
+  if (!mockMode) {
+    setLoad(10, 'Loading fighter record…');
+    passport = await fetchPassport(avatarId);
+  }
+  if (!passport) passport = mockPassport();
+
+  setLoad(15, 'Rendering passport…');
+  renderPassport(passport);
+
+  // Get skybox (cached or generated)
+  const skyboxUrl = await getSkybox();
+
+  setLoad(80, 'Loading dojo…');
+  startViewer(skyboxUrl);
+})();
+</script>
+</body>
+</html>

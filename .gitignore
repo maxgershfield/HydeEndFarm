@@ -13,3 +13,8 @@ partner-api/data/registry.local.json
 crm-from-guide-messaging/node_modules/
 crm-from-guide-messaging/.next/
 crm-from-guide-messaging/out/
+
+# Wine marketplace (Next.js)
+wine-marketplace/node_modules/
+wine-marketplace/.next/
+wine-marketplace/.env.local

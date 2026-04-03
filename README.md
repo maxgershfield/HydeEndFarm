@@ -6,6 +6,7 @@
 - **`docs/OASIS_WINE_SYNDICATE_PLATFORM.md`** — How to wire OASIS for inventory, allocations, pre-orders, NFT certificates, and CRM.
 - **`docs/PARTNER_REGISTRY_SCHEMA.md`** — Holon `metadata` keys (`partnerRegistryTag`, `registryAvatarId`, record types).
 - **`partner-api/`** — Configurable Partner API (BFF): `npm run dev`, `GET /v1/syndicate/me`, optional `REGISTRY_BACKEND=file` for local demos. See `partner-api/README.md`.
+- **`wine-marketplace/`** — Next.js cellar-door shop (Q2P fork): static English wine catalog, Hyde End styling, cookie cart. See `wine-marketplace/README.md`.
 
 ## Run locally
 

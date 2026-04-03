@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Wine marketplace (second Vercel project): set content to your shop URL, or set NEXT_PUBLIC_HYDE_WINE_MARKETPLACE_URL on the passport Vercel build, or use ?wineShop= / window.HYDE_END_WINE_MARKETPLACE_URL -->
+  <meta name="hyde-wine-marketplace-url" content="" />
   <title>Hyde End — Founders passport</title>
   <!-- Static: open via any HTTP server (e.g. python -m http.server) or copy into portals/public. Skybox: worldgen-oasis-demo/demo_blockade_english_vineyard.py -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -86,6 +88,15 @@
       display: inline-flex; align-items: center;
     }
     #tb-farm-map:hover { color: #c8dff0; background: rgba(110,160,200,0.28); border-color: rgba(140,190,230,0.5); }
+    #tb-wine-shop {
+      font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.25rem 0.55rem; border-radius: 4px;
+      background: rgba(201,168,76,0.14); border: 1px solid rgba(201,168,76,0.42); color: var(--gold2);
+      text-decoration: none; flex-shrink: 0; margin-right: 0.45rem; white-space: nowrap;
+      display: inline-flex; align-items: center;
+    }
+    #tb-wine-shop:hover { color: #f5ead0; background: rgba(201,168,76,0.24); border-color: rgba(232,212,160,0.55); }
+    #tb-wine-shop.hidden { display: none !important; }
     #tb-oasis-signin {
       font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase;
       padding: 0.25rem 0.5rem; border-radius: 4px;
@@ -829,6 +840,7 @@
     </div>
     <div class="tb-section">
       <a href="farm-map/map.html" id="tb-farm-map" title="Hyde End &amp; Brimpton ground map">Farm map</a>
+      <a href="#" id="tb-wine-shop" class="hidden" target="_blank" rel="noopener noreferrer" title="Hyde End Cellar Door — buy wine">Cellar door</a>
       <button type="button" id="tb-oasis-signin" title="Scroll to OASIS sign-in">OASIS sign-in</button>
       <span id="tier-display" class="tier-badge seed">Cellar 🍷</span>
       <span id="tb-clock">--:--:--</span>
@@ -1117,6 +1129,38 @@ function partnerApiBase() {
     return String(window.location.origin).replace(/\/$/, '') + '/api';
   return '';
 }
+
+/**
+ * Wine marketplace (Next.js): `?wineShop=` / `window.HYDE_END_WINE_MARKETPLACE_URL`,
+ * or `<meta name="hyde-wine-marketplace-url" content="https://…">`.
+ * Local passport: defaults to http://localhost:3000 when host is localhost.
+ */
+function wineMarketplaceUrl() {
+  const q = params.get('wineShop') || params.get('wine_shop');
+  if (q) return String(q).replace(/\/$/, '');
+  if (typeof window !== 'undefined' && window.HYDE_END_WINE_MARKETPLACE_URL)
+    return String(window.HYDE_END_WINE_MARKETPLACE_URL).replace(/\/$/, '');
+  const meta = typeof document !== 'undefined' ? document.querySelector('meta[name="hyde-wine-marketplace-url"]') : null;
+  const c = meta && meta.getAttribute('content');
+  if (c != null && String(c).trim()) return String(c).trim().replace(/\/$/, '');
+  const host = typeof window !== 'undefined' ? String(window.location.hostname || '') : '';
+  if (host === 'localhost' || host === '127.0.0.1') return 'http://localhost:3000';
+  return '';
+}
+
+function initWineMarketplaceLink() {
+  const el = document.getElementById('tb-wine-shop');
+  if (!el) return;
+  const url = wineMarketplaceUrl();
+  if (!url) {
+    el.classList.add('hidden');
+    return;
+  }
+  el.href = url;
+  el.classList.remove('hidden');
+}
+
+initWineMarketplaceLink();
 
 const CHAPTER_NAMES = [
   { key: 'budbreak', label: 'Budbreak' },

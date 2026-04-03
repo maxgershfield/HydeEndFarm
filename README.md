@@ -39,11 +39,12 @@ Repo: [github.com/maxgershfield/HydeEndFarm](https://github.com/maxgershfield/Hy
 1. Import the repo in [Vercel](https://vercel.com); **Root Directory** **`.`** (default).
 2. **Build**: `npm run build` (compiles `partner-api`, copies static assets into **`public/`**). **Output directory**: `public` (see root `vercel.json`).
 3. **Environment variables** (Partner API → OASIS): set at least `OASIS_SERVICE_JWT` or per-client vars from `partner-api/.env.example`. Optional: `PARTNER_REGISTRY_TAG`, `REGISTRY_BACKEND`, `CORS_ORIGIN` (defaults to `*`).
-4. On `*.vercel.app`, `passport.html` defaults Partner API base to `https://<your-deployment>.vercel.app/api`. Custom domains: set `window.HYDE_END_PARTNER_API_URL` or use `?partnerApi=https://your-domain/api`.
+4. **Wine marketplace link** (top bar “Cellar door” on the passport): set **`NEXT_PUBLIC_HYDE_WINE_MARKETPLACE_URL`** to your **Project B** URL (e.g. `https://your-shop.vercel.app`). The build injects it into `passport.html` / `index.html`. Alternatively edit the `<meta name="hyde-wine-marketplace-url">` in `passport.html`, or use `?wineShop=` / `window.HYDE_END_WINE_MARKETPLACE_URL`. On `localhost`, the link defaults to `http://localhost:3000` when unset.
+5. On `*.vercel.app`, `passport.html` defaults Partner API base to `https://<your-deployment>.vercel.app/api`. Custom domains: set `window.HYDE_END_PARTNER_API_URL` or use `?partnerApi=https://your-domain/api`.
 
 ### Project B — wine marketplace (Next.js)
 
-Create a **separate Vercel project** from the same GitHub repo with **Root Directory** **`wine-marketplace`**. See **`wine-marketplace/README.md`** for step-by-step instructions and env vars (`NEXT_PUBLIC_HYDE_PASSPORT_URL`, etc.).
+Create a **separate Vercel project** from the same GitHub repo with **Root Directory** **`wine-marketplace`**. See **`wine-marketplace/README.md`** for step-by-step instructions and env vars (`NEXT_PUBLIC_HYDE_PASSPORT_URL`, etc.). Copy the shop’s production URL into **Project A** as `NEXT_PUBLIC_HYDE_WINE_MARKETPLACE_URL` so the passport shows **Cellar door**.
 
 ## OASIS session
 

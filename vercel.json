@@ -1,5 +1,7 @@
 {
-  "rewrites": [{ "source": "/", "destination": "/passport.html" }],
+  "buildCommand": "npm run build",
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/", "destination": "/index.html" }],
   "functions": {
     "api/index.ts": {
       "includeFiles": "partner-api/dist/**"

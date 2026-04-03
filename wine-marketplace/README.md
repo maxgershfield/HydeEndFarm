@@ -26,11 +26,12 @@ Use a **second Vercel project** linked to [HydeEndFarm](https://github.com/maxge
 
 1. [Vercel Dashboard](https://vercel.com/new) → **Add New…** → **Project** → Import **HydeEndFarm**.
 2. **Root Directory**: set to **`wine-marketplace`** (Expand “Root Directory” and edit).
-3. **Framework Preset**: Next.js (auto-detected). `vercel.json` in this folder pins `npm install` + `npm run build`.
-4. **Environment variables** (optional but recommended):
+3. **Framework Preset**: **Next.js** (not “Other”). In **Settings → Build & Development Settings**: leave **Output Directory** empty **or** rely on repo `vercel.json` — if you duplicated the passport project, Vercel may have saved **`public`**, which breaks Next.js (`routes-manifest.json` lives under **`.next`**). This repo sets `"outputDirectory": ".next"` in `vercel.json` to override that.
+4. `vercel.json` pins `npm install` + `npm run build`.
+5. **Environment variables** (optional but recommended):
    - `NEXT_PUBLIC_HYDE_PASSPORT_URL` — your main Hyde deployment URL, e.g. `https://hyde-end-farm.vercel.app/` or `https://hyde-end-farm.vercel.app/passport.html` (navbar/footer “Passport” links).
    - `SITE_NAME` — e.g. `Hyde End Cellar Door`.
-5. Deploy. The shop will get its own `*.vercel.app` URL.
+6. Deploy. The shop will get its own `*.vercel.app` URL.
 
 **CORS / cookies**: the cart cookie is scoped to the shop’s domain. The passport on another subdomain will not share that cookie (expected).
 

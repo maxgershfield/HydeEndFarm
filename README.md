@@ -34,10 +34,16 @@ Prompt reference: `worldgen-oasis-demo/prompts/english_vineyard_skybox.md`.
 
 Repo: [github.com/maxgershfield/HydeEndFarm](https://github.com/maxgershfield/HydeEndFarm).
 
-1. Import the GitHub project in [Vercel](https://vercel.com); leave **Root Directory** as `.` (repo root).
-2. **Build**: `npm run build` (compiles `partner-api` to `dist/`). **Output**: static files from the repo root (no separate output dir).
+### Project A — passport + Partner API (repo root)
+
+1. Import the repo in [Vercel](https://vercel.com); **Root Directory** **`.`** (default).
+2. **Build**: `npm run build` (compiles `partner-api`, copies static assets into **`public/`**). **Output directory**: `public` (see root `vercel.json`).
 3. **Environment variables** (Partner API → OASIS): set at least `OASIS_SERVICE_JWT` or per-client vars from `partner-api/.env.example`. Optional: `PARTNER_REGISTRY_TAG`, `REGISTRY_BACKEND`, `CORS_ORIGIN` (defaults to `*`).
 4. On `*.vercel.app`, `passport.html` defaults Partner API base to `https://<your-deployment>.vercel.app/api`. Custom domains: set `window.HYDE_END_PARTNER_API_URL` or use `?partnerApi=https://your-domain/api`.
+
+### Project B — wine marketplace (Next.js)
+
+Create a **separate Vercel project** from the same GitHub repo with **Root Directory** **`wine-marketplace`**. See **`wine-marketplace/README.md`** for step-by-step instructions and env vars (`NEXT_PUBLIC_HYDE_PASSPORT_URL`, etc.).
 
 ## OASIS session
 

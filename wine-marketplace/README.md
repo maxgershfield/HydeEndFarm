@@ -20,9 +20,19 @@ Open [http://localhost:3000](http://localhost:3000). Cart uses an HTTP-only cook
 - **Checkout**: still calls Medusa checkout routes if configured; order summary reads Hyde cart lines when present. For a full production flow, wire Stripe or Medusa with real SKUs.
 - **Branding**: Libre Baskerville + DM Sans, vineyard copy, navbar/footer.
 
-## Deploy (e.g. Vercel)
+## Deploy on Vercel (same repo as passport)
 
-Set root directory to `wine-marketplace` (or this folder if the repo is only the shop). Add `NEXT_PUBLIC_HYDE_PASSPORT_URL` if the passport lives on another URL.
+Use a **second Vercel project** linked to [HydeEndFarm](https://github.com/maxgershfield/HydeEndFarm) so the Next app is not mixed with the root static + `api/` deployment.
+
+1. [Vercel Dashboard](https://vercel.com/new) → **Add New…** → **Project** → Import **HydeEndFarm**.
+2. **Root Directory**: set to **`wine-marketplace`** (Expand “Root Directory” and edit).
+3. **Framework Preset**: Next.js (auto-detected). `vercel.json` in this folder pins `npm install` + `npm run build`.
+4. **Environment variables** (optional but recommended):
+   - `NEXT_PUBLIC_HYDE_PASSPORT_URL` — your main Hyde deployment URL, e.g. `https://hyde-end-farm.vercel.app/` or `https://hyde-end-farm.vercel.app/passport.html` (navbar/footer “Passport” links).
+   - `SITE_NAME` — e.g. `Hyde End Cellar Door`.
+5. Deploy. The shop will get its own `*.vercel.app` URL.
+
+**CORS / cookies**: the cart cookie is scoped to the shop’s domain. The passport on another subdomain will not share that cookie (expected).
 
 ## Legal
 

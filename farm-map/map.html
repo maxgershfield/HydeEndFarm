@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyde End Farm Vineyard · Brimpton Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,400;1,500&family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0c0608;
+  --panel:    rgba(22,12,14,0.97);
+  --border:   rgba(196,120,108,0.28);
+  --border2:  rgba(196,120,108,0.1);
+  --text:     #f5ebe8;
+  --muted:    #9a7a72;
+  --amber:    #c9a84c;
+  --amber2:   #e0c97a;
+  --green:    #8b3a4a;
+  --bright:   #c4786c;
+  --teal:     #5a9b8c;
+  --gold:     #c9a84c;
+  --blue:     #7a9abf;
+  --mono:     "JetBrains Mono", monospace;
+  --serif:    "Cormorant Garamond", Georgia, serif;
+  --sans:     "Space Grotesk", sans-serif;
+  --display:  "Bebas Neue", var(--sans);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg); overflow: hidden; font-family: var(--mono); color: var(--text); }
+
+/* ── MAP ────────────────────────────────────────────────────────── */
+#map { position: fixed; inset: 0; z-index: 0; }
+/* Apply dark/night filter to the base map tiles only */
+.maplibregl-map .maplibregl-canvas-container canvas {
+  filter: brightness(0.75) saturate(0.85);
+}
+/* Allow marker labels to overflow below their wrapper */
+.maplibregl-marker { overflow: visible !important; }
+
+/* ── NAV ────────────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; height: 38px;
+  display: flex; align-items: center; gap: 0.5rem;
+  background: rgba(3,7,3,0.88); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem; z-index: 200;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.09em;
+}
+.nav-brand  { color: var(--bright); font-weight: 700; white-space: nowrap; font-size: 0.7rem; }
+.nav-loc    { color: var(--amber); font-family: var(--serif); font-style: italic; font-size: 0.85rem; white-space: nowrap; }
+.nav-sep    { color: var(--border); }
+.nav-phase  { color: var(--muted); white-space: nowrap; }
+.nav-link {
+  padding: 3px 10px; font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); text-decoration: none; border-radius: 3px;
+  transition: all 0.2s; white-space: nowrap; font-family: var(--mono);
+}
+.nav-link:hover  { color: var(--text); background: rgba(74,155,74,0.07); }
+.nav-link.active { color: var(--bright); background: rgba(74,155,74,0.10); border: 1px solid rgba(74,155,74,0.25); }
+button.nav-link {
+  font-family: inherit; cursor: pointer;
+}
+.nav-link.nav-ratsey { color: #8eb4d4; border: 1px solid rgba(110,160,200,0.35); }
+.nav-link.nav-ratsey:hover { color: #b8d4ec; background: rgba(110,160,200,0.12); }
+.nav-link.nav-ratsey.active { color: #b8d4ec; background: rgba(110,160,200,0.18); border-color: rgba(140,190,230,0.45); }
+.nav-spacer { flex: 1; }
+.nav-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bright); box-shadow: 0 0 6px var(--bright); animation: pulse-dot 2s infinite; flex-shrink: 0; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* ── LOADING ────────────────────────────────────────────────────── */
+#loading {
+  position: fixed; inset: 0;
+  background: var(--bg); z-index: 500;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.8s;
+}
+.load-guide { font-family: var(--serif); font-style: italic; font-size: 1.05rem; color: var(--amber); letter-spacing: 0.04em; margin-bottom: 6px; opacity: 0.85; }
+.load-title { font-family: var(--display); font-size: 3rem; letter-spacing: 0.18em; color: var(--bright); line-height: 1; margin-bottom: 2px; }
+.load-sub   { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.22em; color: var(--amber2); margin-bottom: 28px; opacity: 0.9; }
+.load-bar-bg{ width: 260px; height: 2px; background: var(--border); border-radius: 2px; }
+#load-bar   { height: 2px; width: 0; background: var(--bright); border-radius: 2px; transition: width 0.12s linear; }
+.load-coord { font-size: 0.55rem; color: var(--muted); margin-top: 12px; letter-spacing: 0.1em; }
+
+/* ── FILTER PANEL ───────────────────────────────────────────────── */
+#filter-panel {
+  position: fixed; left: 16px; top: 48px; z-index: 150;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px; font-family: var(--mono);
+  font-size: 0.58rem; min-width: 148px; backdrop-filter: blur(8px);
+}
+.filter-label { color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.52rem; margin-bottom: 8px; }
+.filter-btn {
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 3px 0; transition: color 0.2s; width: 100%; background: none; border: none;
+  font-family: var(--mono); font-size: 0.58rem; text-align: left; color: var(--muted);
+}
+.filter-btn:hover  { color: var(--text); }
+.filter-btn.active { color: var(--text); }
+.filter-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── MAP CONTROLS (bottom-left) ─────────────────────────────────── */
+#map-controls {
+  position: fixed; left: 16px; bottom: 40px; z-index: 150;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ctrl-group { display: flex; gap: 4px; }
+.ctrl-btn {
+  font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em;
+  background: var(--panel); border: 1px solid var(--border);
+  color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer;
+  transition: all 0.2s; text-transform: uppercase; white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
+.ctrl-btn:hover  { color: var(--text); border-color: rgba(74,155,74,0.4); }
+.ctrl-btn.active { color: var(--bright); border-color: rgba(74,155,74,0.5); background: rgba(74,155,74,0.08); }
+
+/* ── INFO PANEL (right) ─────────────────────────────────────────── */
+#info-panel {
+  position: fixed; right: 0; top: 38px; bottom: 28px; width: 300px;
+  background: var(--panel); border-left: 1px solid var(--border);
+  overflow-y: auto; z-index: 150; font-family: var(--mono);
+  display: flex; flex-direction: column;
+  transition: transform 0.3s; backdrop-filter: blur(12px);
+}
+.ip-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border2); }
+.ip-name   { font-family: var(--display); font-size: 1.35rem; letter-spacing: 0.08em; line-height: 1.1; }
+.ip-sub    { font-size: 0.6rem; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.ip-type-badge {
+  display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase;
+  background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+  color: var(--muted);
+}
+.ip-coords { font-size: 0.52rem; color: var(--muted); margin-top: 5px; letter-spacing: 0.08em; font-family: var(--mono); }
+.ip-body   { padding: 14px 16px; flex: 1; }
+.ip-desc   { font-size: 0.68rem; line-height: 1.7; color: var(--muted); margin-bottom: 14px; }
+
+.stat-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.stat-tile   { background: rgba(74,155,74,0.06); border: 1px solid rgba(74,155,74,0.14); border-radius: 6px; padding: 10px 12px; }
+.stat-tile.gold { background: rgba(201,168,76,0.06); border-color: rgba(201,168,76,0.18); }
+.stat-val  { display: block; font-size: 1.25rem; font-family: var(--display); letter-spacing: 0.05em; line-height: 1; color: var(--bright); }
+.stat-val.gold  { color: var(--gold); }
+.stat-val.teal  { color: var(--teal); }
+.stat-val.amber { color: var(--amber); }
+.stat-lbl  { display: block; font-size: 0.55rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.08em; text-transform: uppercase; }
+.ip-links-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+/* STAR Holon block */
+.star-holon-block {
+  margin-top: 14px; padding: 10px 12px;
+  background: rgba(74,155,74,0.06);
+  border: 1px solid rgba(74,155,74,0.2);
+  border-radius: 6px;
+}
+.star-holon-header { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.star-dot { color: #7ddb7d; font-size: 0.7rem; }
+.star-label { font-family: var(--mono); font-size: 0.6rem; color: var(--bright); letter-spacing: 0.1em; text-transform: uppercase; }
+.star-id { font-family: var(--mono); font-size: 0.55rem; color: var(--muted); margin-left: auto; }
+.star-holon-footer { display: flex; gap: 6px; flex-wrap: wrap; }
+.star-api-btn { background: rgba(74,155,74,0.08); border: 1px solid rgba(74,155,74,0.25); color: var(--bright); }
+.star-api-btn:hover { background: rgba(74,155,74,0.18); }
+.star-live-btn { background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.25); color: var(--gold); }
+.star-live-btn:hover { background: rgba(201,168,76,0.18); }
+.star-holon-live { margin-top: 10px; }
+.sh-meta { font-family: var(--mono); font-size: 0.55rem; }
+.sh-row-head { display: flex; justify-content: space-between; color: var(--muted); margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sh-table { width: 100%; border-collapse: collapse; }
+.sh-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+.sh-key { color: var(--muted); padding: 1px 6px 1px 0; white-space: nowrap; }
+.sh-val { color: var(--fg); word-break: break-all; }
+.ip-link-btn {
+  font-size: 0.58rem; padding: 5px 10px; border-radius: 4px; text-decoration: none;
+  letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.2s;
+  cursor: pointer; border: none; font-family: var(--mono);
+}
+.ip-link-green { background: rgba(74,155,74,0.12); border: 1px solid rgba(74,155,74,0.3); color: var(--bright); }
+.ip-link-green:hover { background: rgba(74,155,74,0.22); }
+.ip-link-gold  { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.3); color: var(--gold); }
+.ip-link-gold:hover  { background: rgba(201,168,76,0.22); }
+.ip-link-muted { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--muted); }
+.ip-link-muted:hover { color: var(--text); }
+.karma-bar-wrap { margin: 8px 0 4px; }
+.karma-bar-label { font-size: 0.56rem; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 4px; }
+.karma-bar-track { height: 3px; background: rgba(74,155,74,0.12); border-radius: 2px; }
+.karma-bar-fill  { height: 3px; background: var(--gold); border-radius: 2px; }
+.rank-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 0.62rem; color: var(--gold); background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.25); padding: 3px 8px; border-radius: 10px; margin-top: 6px; }
+.feature-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.feature-chip  { font-size: 0.5rem; padding: 2px 7px; border-radius: 10px; background: rgba(74,155,74,0.08); border: 1px solid rgba(74,155,74,0.2); color: var(--bright); letter-spacing: 0.06em; }
+.ip-tip { padding: 40px 20px; text-align: center; color: var(--muted); font-size: 0.62rem; line-height: 2; }
+.ip-tip-icon { font-family: var(--serif); font-style: italic; font-size: 1.1rem; color: var(--green); display: block; margin-bottom: 10px; }
+
+/* ── TALLY STRIP ────────────────────────────────────────────────── */
+#tally {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 28px;
+  background: rgba(3,7,3,0.88); border-top: 1px solid var(--border);
+  display: flex; align-items: center; overflow: hidden;
+  z-index: 150; font-family: var(--mono); font-size: 0.58rem;
+  backdrop-filter: blur(8px);
+}
+.tally-item { padding: 0 12px; white-space: nowrap; border-right: 1px solid var(--border2); cursor: pointer; transition: color 0.2s; color: var(--muted); }
+.tally-item:hover { color: var(--bright); }
+
+/* ── MARKERS ────────────────────────────────────────────────────── */
+.marker-wrap {
+  /* sized to the dot only — keeps anchor:'center' pinned to the geo-coord */
+  position: relative; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.marker-dot {
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  background: rgba(0,0,0,0.5);
+  box-shadow: 0 0 14px currentColor, 0 0 28px currentColor;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative; z-index: 2;
+}
+.marker-wrap:hover .marker-dot { transform: scale(1.35); }
+.marker-wrap.selected .marker-dot { transform: scale(1.4); }
+.marker-label {
+  /* hangs below the dot without affecting the wrapper's bounding box */
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono); font-size: 0.59rem; letter-spacing: 0.05em;
+  white-space: nowrap; pointer-events: none;
+  background: rgba(3,7,3,0.82); padding: 2px 7px; border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.09);
+  text-shadow: 0 0 8px currentColor;
+  line-height: 1.4; z-index: 3;
+}
+
+/* Marker size by type */
+.type-conservation .marker-dot { width: 14px; height: 14px; color: #7ddb7d; }
+.type-anchor       .marker-dot { width: 16px; height: 16px; color: #e0c97a; }
+.type-hotel_champion .marker-dot { width: 14px; height: 14px; color: #c9a84c; }
+.type-hotel_partner  .marker-dot { width: 11px; height: 11px; color: #4ecdc4; }
+.type-hotel_starter  .marker-dot  { width: 9px; height: 9px; color: #5ab4ff; }
+.type-gym            .marker-dot  { width: 13px; height: 13px; color: #e8763a; }
+
+/* Pulsing ring for vineyard / conservation markers */
+.marker-pulse-ring {
+  position: absolute; border-radius: 50%;
+  border: 2px solid #4a9b4a;
+  animation: expand-ring 2.4s ease-out infinite;
+  pointer-events: none; z-index: 1;
+}
+.marker-pulse-ring:nth-child(2) { animation-delay: 0.8s; }
+.marker-pulse-ring:nth-child(3) { animation-delay: 1.6s; }
+@keyframes expand-ring {
+  0%   { width: 24px; height: 24px; opacity: 0.7; }
+  100% { width: 72px; height: 72px; opacity: 0; }
+}
+
+/* Optional polygon label (unused) */
+.pv-map-label {
+  position: absolute;
+  font-family: var(--display); letter-spacing: 0.12em; font-size: 0.75rem;
+  color: #7ddb7d; text-shadow: 0 0 12px #4a9b4a;
+  pointer-events: none; white-space: nowrap;
+  background: rgba(3,7,3,0.6); padding: 3px 8px; border-radius: 4px;
+  border: 1px solid rgba(74,155,74,0.3);
+}
+
+/* ── MODAL ──────────────────────────────────────────────────────── */
+.modal-back {
+  position: fixed; inset: 0; background: rgba(3,7,3,0.8); backdrop-filter: blur(4px);
+  z-index: 400; display: none; align-items: center; justify-content: center;
+}
+.modal-back.open { display: flex; }
+.modal-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; width: min(580px, 94vw); max-height: 80vh;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.modal-head {
+  padding: 16px 20px 14px; border-bottom: 1px solid var(--border2);
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
+.modal-head-title { font-family: var(--display); font-size: 1.6rem; letter-spacing: 0.08em; }
+.modal-head-sub   { font-size: 0.6rem; color: var(--muted); margin-top: 4px; }
+.modal-close      { font-family: var(--mono); font-size: 0.58rem; background: none; border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 3px; cursor: pointer; }
+.modal-close:hover{ color: var(--text); }
+.modal-body       { padding: 16px 20px 20px; overflow-y: auto; font-family: var(--mono); font-size: 0.65rem; line-height: 1.7; }
+.modal-desc       { color: var(--muted); margin-bottom: 14px; }
+.modal-stat-grid  { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin: 10px 0; }
+.modal-stat-tile  { background: rgba(74,155,74,0.06); border: 1px solid var(--border2); border-radius: 6px; padding: 10px; text-align: center; }
+.modal-stat-val   { display: block; font-size: 1.1rem; font-family: var(--display); color: var(--bright); }
+.modal-stat-lbl   { display: block; font-size: 0.52rem; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.08em; }
+.modal-meta-row   { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border2); font-size: 0.6rem; }
+.modal-meta-key   { color: var(--muted); }
+.modal-meta-val   { color: var(--text); text-align: right; }
+.modal-nest       { margin-top: 10px; }
+.modal-nest summary { font-size: 0.6rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); cursor: pointer; padding: 6px 0; list-style: none; }
+.modal-nest summary::before { content: '▶ '; font-size: 0.5rem; }
+.modal-nest[open] summary::before { content: '▼ '; }
+.modal-lang-chip  { display: inline-block; font-size: 0.5rem; padding: 2px 7px; border-radius: 10px; background: rgba(74,155,74,0.08); border: 1px solid rgba(74,155,74,0.2); color: var(--bright); margin: 2px; }
+.modal-ext-link   { color: var(--bright); font-size: 0.62rem; text-decoration: none; }
+.modal-ext-link:hover { text-decoration: underline; }
+
+/* MapLibre overrides */
+.maplibregl-ctrl-bottom-right { bottom: 34px !important; }
+.maplibregl-ctrl-bottom-left  { bottom: 34px !important; left: 172px !important; }
+.maplibregl-ctrl-group { background: rgba(6,12,6,0.9) !important; border: 1px solid rgba(74,155,74,0.25) !important; }
+.maplibregl-ctrl-group button { background: none !important; }
+.maplibregl-ctrl-group button + button { border-top: 1px solid rgba(74,155,74,0.15) !important; }
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: brightness(0.7) sepia(1) hue-rotate(70deg) saturate(1.5); }
+.maplibregl-ctrl-attrib { background: rgba(3,7,3,0.8) !important; color: #3a5a3a !important; font-size: 0.48rem !important; }
+.maplibregl-ctrl-attrib a { color: #4a7a4a !important; }
+
+/* ── Info panel inner wrapper ────────────────────────────────── */
+#ip-handle {
+  display: none; /* visible on mobile only */
+  align-items: center; justify-content: space-between;
+  padding: 10px 16px 6px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border2);
+}
+.ip-handle-bar {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: rgba(74,155,74,0.35); flex-shrink: 0;
+}
+#ip-close-btn {
+  font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em;
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  padding: 3px 10px; border-radius: 3px; cursor: pointer; transition: all 0.2s;
+}
+#ip-close-btn:hover { color: var(--text); }
+#ip-content { overflow-y: auto; flex: 1; }
+
+/* Filter toggle — hidden on desktop */
+#filter-toggle-btn {
+  display: none;
+  background: rgba(74,155,74,0.08); border: 1px solid var(--border);
+  color: var(--muted); font-size: 0.9rem; padding: 0 8px; height: 24px;
+  border-radius: 4px; cursor: pointer; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.2s;
+}
+#filter-toggle-btn:hover,
+#filter-toggle-btn.active { color: var(--bright); border-color: rgba(74,155,74,0.4); }
+
+/* ── MOBILE ──────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Loading */
+  .load-guide { font-size: 0.8rem; }
+  .load-title { font-size: 2.2rem; letter-spacing: 0.14em; }
+  .load-sub   { font-size: 1rem;   letter-spacing: 0.18em; }
+  .load-bar-bg { width: 180px; }
+
+  /* Nav — strip down to essentials */
+  nav { padding: 0 0.75rem; gap: 0.35rem; height: 42px; }
+  .nav-sep, .nav-phase { display: none; }
+  .nav-loc {
+    font-size: 0.7rem; overflow: hidden; text-overflow: ellipsis;
+    max-width: 38vw; display: block;
+  }
+  /* Hide all nav-links except the key Book link */
+  .nav-link { display: none; }
+  .nav-link-key { display: inline-flex; font-size: 0.55rem; padding: 3px 8px; }
+  #filter-toggle-btn { display: inline-flex; }
+
+  /* Tally — hidden on mobile */
+  #tally { display: none; }
+
+  /* Filter panel — full-width horizontal chip strip */
+  #filter-panel {
+    left: 0; right: 0; top: 42px; width: 100%;
+    min-width: unset;
+    border-radius: 0 0 10px 10px;
+    border-left: none; border-right: none; border-top: none;
+    display: none;
+    flex-direction: row; flex-wrap: wrap; gap: 5px; padding: 8px 12px 10px;
+  }
+  #filter-panel.open { display: flex; }
+  .filter-label { display: none; }
+  .filter-btn {
+    width: auto; padding: 4px 11px;
+    border: 1px solid var(--border); border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+  }
+  .filter-btn.active { background: rgba(74,155,74,0.12); border-color: rgba(74,155,74,0.35); color: var(--text); }
+
+  /* Map controls — compact, bottom-left above the sheet gap */
+  #map-controls { left: 8px; bottom: 10px; }
+  .ctrl-btn { font-size: 0.5rem; padding: 5px 9px; }
+  .ctrl-group { gap: 4px; }
+
+  /* Info panel — bottom sheet */
+  #info-panel {
+    top: auto;
+    right: 0; left: 0; bottom: 0;
+    width: 100%; height: 70vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 14px 14px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  #info-panel.sheet-open { transform: translateY(0); }
+
+  /* Show the drag handle on mobile */
+  #ip-handle { display: flex; }
+
+  /* Modal — 2-col stat grid, taller */
+  .modal-card { max-height: 90vh; border-radius: 14px 14px 0 0; }
+  .modal-stat-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* MapLibre controls reposition */
+  .maplibregl-ctrl-bottom-left  { bottom: 10px !important; left: 8px !important; }
+  .maplibregl-ctrl-bottom-right { bottom: 10px !important; right: 8px !important; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">Hyde End</span>
+  <span class="nav-sep">·</span>
+  <span class="nav-loc">Hyde End Farm Vineyard · Brimpton, West Berkshire, UK</span>
+  <span class="nav-sep">·</span>
+  <span class="nav-phase">FARM MAP</span>
+  <div class="nav-live-dot"></div>
+  <div class="nav-spacer"></div>
+  <a class="nav-link nav-map-link active" href="map.html">Map</a>
+  <button type="button" class="nav-link nav-ratsey" id="nav-ratsey-tab" onclick="flyToRatseyFromNav()" title="Fly to Cowes · Ratsey &amp; Lapthorn">Ratsey &amp; Lapthorn</button>
+  <a class="nav-link" href="../passport.html?demo=1">Syndicate passport</a>
+  <button id="filter-toggle-btn" onclick="toggleFilterPanel()" aria-label="Toggle filters">⊞</button>
+</nav>
+
+<div id="map"></div>
+
+<div id="loading">
+  <div class="load-guide">Hyde End Farm</div>
+  <div class="load-title">VINEYARD</div>
+  <div class="load-sub">BRIMPTON · UK</div>
+  <div class="load-bar-bg"><div id="load-bar"></div></div>
+  <div class="load-coord">51.376°N · 1.199°W · West Berkshire · RG7 4RJ</div>
+</div>
+
+<div id="filter-panel">
+  <div class="filter-label">Filter</div>
+  <button class="filter-btn active" onclick="filterPlaces('all')" data-filter="all">
+    <span class="filter-dot" style="background:#f5ebe8"></span> All
+  </button>
+  <button class="filter-btn" onclick="filterPlaces('vineyard')" data-filter="vineyard">
+    <span class="filter-dot" style="background:#c4786c"></span> Vineyard
+  </button>
+  <button class="filter-btn" onclick="filterPlaces('anchor')" data-filter="anchor">
+    <span class="filter-dot" style="background:#e0c97a"></span> Locale
+  </button>
+  <button class="filter-btn" onclick="filterPlaces('partner_loft')" data-filter="partner_loft">
+    <span class="filter-dot" style="background:#6ea0c8"></span> Ratsey &amp; Lapthorn
+  </button>
+</div>
+
+<div id="map-controls">
+  <div class="ctrl-group">
+    <button class="ctrl-btn active" id="conn-btn" onclick="toggleConnections()">Links</button>
+    <button class="ctrl-btn active" id="lbl-btn"  onclick="toggleLabels()">Labels</button>
+  </div>
+  <div class="ctrl-group">
+    <button class="ctrl-btn" onclick="flyToHEV()">↗ Hyde End Farm</button>
+    <button class="ctrl-btn" onclick="flyToRatsey()">↗ Ratsey · Cowes</button>
+    <button class="ctrl-btn" onclick="flyToAll()">↗ Fit UK south</button>
+  </div>
+</div>
+
+<div id="info-panel">
+  <div id="ip-handle">
+    <div class="ip-handle-bar"></div>
+    <button id="ip-close-btn" onclick="closeSheet()">✕ Close</button>
+  </div>
+  <div id="ip-content">
+    <div class="ip-tip">
+      <span class="ip-tip-icon">Farm map</span>
+      Hyde End Farm Vineyard and Brimpton at approximate UK coordinates.<br>
+      Boundary is editable (drag corners when panel is open).<br>
+      Tap a marker for details. Use the <strong style="color:var(--bright)">Ratsey &amp; Lapthorn</strong> tab to jump to Cowes (Simon’s sail loft &amp; bags).<br>
+      Share a location: <code style="font-size:0.55rem;color:var(--amber)">?place=ratsey</code> or <code style="font-size:0.55rem;color:var(--amber)">?place=hev</code>
+    </div>
+  </div>
+</div>
+
+<div id="tally"></div>
+
+<div class="modal-back" id="sysModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-head-title" id="modal-title">—</div>
+        <div class="modal-head-sub"  id="modal-sub">—</div>
+      </div>
+      <button class="modal-close" id="modal-close-btn">Close</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+// ── Place data (lng, lat for MapLibre) · Hyde End Farm Vineyard, Brimpton, UK ─
+// Coordinates are approximate (Hyde End Lane / RG7 4RJ area). Refine with a site survey.
+const PLACES = [
+
+  { id:'hev', name:'Hyde End Farm Vineyard', shortName:'HYDE END', type:'vineyard',
+    coords:[-1.19845, 51.37585],
+    subtitle:'Hyde End Lane · Brimpton · West Berkshire · RG7 4RJ',
+    region:'United Kingdom', sector:'West Berkshire · Kennet Valley',
+    desc:'Hyde End Farm Vineyard — English winegrowing on the Berkshire/Hampshire border. Syndicate members hold tokenised bottle certificates, can gift allocations, and pre-order upcoming vintages. Replace demo stats with live OASIS metadata when holons are registered.',
+    localStats:{ vines: 8200, bottlesReserved: 2400, syndicateMembers: 48, acres: 12, harvestYear: 2024, standing: 12840 },
+    link:'../passport.html?demo=1',
+    features:'Syndicate passport,Bottle certificates,Gift transfers,Pre-order windows,OASIS STAR (planned),English vineyard skybox',
+    googleMaps:'https://maps.google.com/?q=Hyde+End+Lane+Brimpton+RG7+4RJ'
+  },
+
+  { id:'brimpton', name:'Brimpton', shortName:'BRIMPTON', type:'anchor',
+    coords:[-1.191, 51.378],
+    subtitle:'Civil parish · West Berkshire · Near Aldermaston & Thatcham',
+    region:'England', sector:'South East · Kennet district',
+    desc:'Brimpton is a village and civil parish south-west of Reading. Hyde End Farm Vineyard sits on Hyde End Lane within the parish. Useful context for visitors travelling from London (M4) or Newbury.',
+    localStats:{ populationApprox: 450, distanceNewburyMiles: 7, distanceReadingMiles: 12, postcodes:'RG7' }
+  },
+
+  // Cowes loft — coords from Ratsey & Lapthorn Google Maps listing (Somerton Works)
+  { id:'ratsey', name:'Ratsey & Lapthorn', shortName:'RATSEY', type:'partner_loft',
+    coords:[-1.3033466, 50.7486565],
+    subtitle:'The Sail Loft · Somerton Works · Cowes · Isle of Wight · PO31 8PB',
+    region:'United Kingdom', sector:'Solent · Isle of Wight',
+    desc:'Simon’s sailmaking and bag house: trading since 1790, described on ratseyandlapthorn.com as the world’s oldest sailmaker. Cowes production loft (~10,000 sq ft), plus Barcelona. Handcrafted bags (2025 collection) with NFC traceability; sails for classic, cruising, and racing; covers, awnings, and repair.',
+    localStats:{ founded: 1790, cowesSqFt: 10000, barcelonaSqFt: 4000, bagCollectionYear: 2025 },
+    link:'https://ratseyandlapthorn.com/',
+    extraLinks:[
+      { label:'Bags', url:'https://ratseyandlapthorn.com/bags' },
+      { label:'Sailmaking', url:'https://ratseyandlapthorn.com/sailmaking' },
+      { label:'Contact & hours', url:'https://ratseyandlapthorn.com/contact' },
+      { label:'Newsletters', url:'https://ratseyandlapthorn.com/newsletters' },
+    ],
+    phone:'+44 1983 294051',
+    email:'sailmaking@ratseyandlapthorn.com',
+    googleMaps:'https://www.google.com/maps/search/?api=1&query=Ratsey%20%26%20Lapthorn%20Cowes%20PO31%208PB',
+    distant:true
+  },
+
+];
+
+// ── Dashed lines from Hyde End vineyard to partner sites (ids) ─
+const HEV_SYNDICATE_LINKS = ['ratsey'];
+
+// ── Type colours ──────────────────────────────────────────────────────────────
+const TYPE_COLOR = {
+  anchor:          '#e0c97a',
+  vineyard:        '#c4786c',
+  partner_loft:    '#6ea0c8',
+  conservation:    '#7ddb7d',
+  hotel_champion:  '#c9a84c',
+  hotel_partner:   '#4ecdc4',
+  hotel_starter:   '#5ab4ff',
+  gym:             '#e8763a',
+};
+const TYPE_LABEL = {
+  anchor:          'Locale',
+  vineyard:        'Vineyard · Hyde End Farm',
+  partner_loft:    'Partner · Sail loft & bags',
+  conservation:    'Conservation Area · STAR OAPP',
+  hotel_champion:  'Hotel · Champion Tier',
+  hotel_partner:   'Hotel · Partner Tier',
+  hotel_starter:   'Hotel · Starter Tier',
+  gym:             'Gym · Fight Sports',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtNum(n) {
+  if (n == null || n === '') return '—';
+  if (typeof n === 'string') return n;
+  if (n >= 1000000) return (n/1000000).toFixed(1)+'M';
+  if (n >= 1000)    return (n/1000).toFixed(1)+'k';
+  return String(n);
+}
+function fmtCoords(coords) {
+  const lat = coords[1].toFixed(4);
+  const lng = coords[0].toFixed(4);
+  return `${lat > 0 ? lat+'°N' : (-lat)+'°S'}  ${lng < 0 ? (-lng)+'°W' : lng+'°E'}`;
+}
+
+// ── Map init ──────────────────────────────────────────────────────────────────
+const map = new maplibregl.Map({
+  container:  'map',
+  style:      'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  center:     [-1.195, 51.3765],
+  zoom:       12.4,
+  pitch:      48,
+  bearing:    -18,
+  antialias:  true,
+});
+
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+
+// ── Marker registry ───────────────────────────────────────────────────────────
+const markerMap   = {};   // id → maplibregl.Marker
+const markerElMap = {};   // id → DOM element
+let   showLabels  = true;
+let   showConns   = true;
+let   selectedId  = null;
+
+// ── Build custom marker element ───────────────────────────────────────────────
+function buildMarkerEl(place) {
+  const color  = TYPE_COLOR[place.type] || '#ffffff';
+  const wrap   = document.createElement('div');
+  wrap.className = `marker-wrap type-${place.type}`;
+  wrap.style.color = color;
+
+  if (place.type === 'conservation' || place.type === 'vineyard') {
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'marker-pulse-ring';
+      wrap.appendChild(ring);
+    }
+  } else if (place.type === 'partner_loft') {
+    for (let i = 0; i < 2; i++) {
+      const ring = document.createElement('div');
+      ring.className = 'marker-pulse-ring';
+      ring.style.opacity = String(0.35 - i * 0.12);
+      wrap.appendChild(ring);
+    }
+  }
+
+  const dot = document.createElement('div');
+  dot.className = 'marker-dot';
+  wrap.appendChild(dot);
+
+  const lbl = document.createElement('div');
+  lbl.className = 'marker-label';
+  lbl.style.color = color;
+  lbl.textContent = place.shortName;
+  wrap.appendChild(lbl);
+
+  wrap.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectPlace(place.id);
+  });
+
+  return wrap;
+}
+
+// ── Add connection lines source (updated as needed) ───────────────────────────
+function buildConnectionsGeoJSON() {
+  const hevPlace = PLACES.find(p => p.id === 'hev');
+  if (!hevPlace || !HEV_SYNDICATE_LINKS.length) {
+    return { type: 'FeatureCollection', features: [] };
+  }
+  const hevCoords = hevPlace.coords;
+  const features = HEV_SYNDICATE_LINKS
+    .map(id => PLACES.find(p => p.id === id))
+    .filter(Boolean)
+    .map(other => ({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [hevCoords, other.coords] }
+    }));
+  return { type: 'FeatureCollection', features };
+}
+
+// ── Vineyard polygon helpers & drag-edit ─────────────────────────────────────
+window.hevCorners = null;   // set on load
+let hevHandles = [];
+let hevEditActive = false;
+
+function buildHEVGeojson() {
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[...window.hevCorners, window.hevCorners[0]]]
+    }
+  };
+}
+
+function hevCentroid() {
+  const lngs = window.hevCorners.map(c => c[0]);
+  const lats  = window.hevCorners.map(c => c[1]);
+  return [
+    lngs.reduce((a, v) => a + v, 0) / lngs.length,
+    lats.reduce((a, v) => a + v, 0) / lats.length,
+  ];
+}
+
+function refreshHEVSource() {
+  if (map.getSource('hev-area')) {
+    map.getSource('hev-area').setData(buildHEVGeojson());
+  }
+  const cen = hevCentroid();
+  if (markerMap['hev']) markerMap['hev'].setLngLat(cen);
+  const hevPlace = PLACES.find(p => p.id === 'hev');
+  if (hevPlace) hevPlace.coords = cen;
+  if (map.getSource && map.getSource('connections')) {
+    try { map.getSource('connections').setData(buildConnectionsGeoJSON()); } catch (_) {}
+  }
+}
+
+const HEV_STORAGE_KEY = 'hev-corners-v1';
+
+function saveHEVCorners() {
+  try { localStorage.setItem(HEV_STORAGE_KEY, JSON.stringify(window.hevCorners)); } catch(_) {}
+}
+
+function loadSavedHEVCorners() {
+  try {
+    const raw = localStorage.getItem(HEV_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(_) {}
+  return null;
+}
+
+function updateCoordsPanel() {
+  const el = document.getElementById('hev-edit-coords');
+  if (!el) return;
+  const labels = ['SW','SE','NE','NW'];
+  el.innerHTML = window.hevCorners.map((c, i) =>
+    `<span style="color:var(--muted)">${labels[i]}:</span> [${c[0].toFixed(5)}, ${c[1].toFixed(5)}]`
+  ).join('<br>');
+}
+
+window.toggleHEVEdit = function() {
+  hevEditActive = !hevEditActive;
+  const btn  = document.getElementById('hev-edit-btn');
+  const panel = document.getElementById('hev-edit-panel');
+
+  if (hevEditActive) {
+    btn.textContent  = '✓ Done Editing';
+    btn.style.background = 'rgba(196,120,108,0.22)';
+    panel.style.display  = 'block';
+    updateCoordsPanel();
+
+    const labels = ['SW','SE','NE','NW'];
+    window.hevCorners.forEach((coord, i) => {
+      const el = document.createElement('div');
+      el.title = labels[i];
+      el.style.cssText = [
+        'width:16px','height:16px','background:#c4786c',
+        'border:2.5px solid #fff','border-radius:50%',
+        'cursor:grab','box-shadow:0 0 8px #c4786c88',
+        'display:flex','align-items:center','justify-content:center',
+        'font-size:8px','color:#030703','font-weight:700','font-family:monospace'
+      ].join(';');
+      el.textContent = labels[i];
+
+      const handle = new maplibregl.Marker({ element: el, draggable: true })
+        .setLngLat(coord).addTo(map);
+
+      handle.on('drag', () => {
+        const ll = handle.getLngLat();
+        window.hevCorners[i] = [parseFloat(ll.lng.toFixed(6)), parseFloat(ll.lat.toFixed(6))];
+        refreshHEVSource();
+        updateCoordsPanel();
+        saveHEVCorners();
+      });
+      hevHandles.push(handle);
+    });
+
+  } else {
+    btn.textContent  = '✏ Edit Boundary';
+    btn.style.background = '';
+    panel.style.display  = 'none';
+    hevHandles.forEach(h => h.remove());
+    hevHandles = [];
+  }
+};
+
+// ── Tap map background → close mobile sheet & filter panel ───────────────────
+map.on('click', () => {
+  if (window.innerWidth <= 640) {
+    document.getElementById('info-panel').classList.remove('sheet-open');
+    document.getElementById('filter-panel').classList.remove('open');
+    document.getElementById('filter-toggle-btn').classList.remove('active');
+  }
+});
+
+// ── After map style loads ─────────────────────────────────────────────────────
+map.on('load', () => {
+
+  // 1. Hyde End Farm approximate parcel (refine with Edit Boundary).
+  window.hevCorners = loadSavedHEVCorners() || [
+    [-1.19975, 51.37455],
+    [-1.19705, 51.37460],
+    [-1.19715, 51.37705],
+    [-1.19965, 51.37695],
+  ];
+
+  map.addSource('hev-area', {
+    type: 'geojson',
+    data: buildHEVGeojson()
+  });
+  map.addLayer({ id:'hev-fill', type:'fill', source:'hev-area',
+    paint:{ 'fill-color':'#8b3a4a', 'fill-opacity': 0.2 }
+  });
+  map.addLayer({ id:'hev-border', type:'line', source:'hev-area',
+    paint:{ 'line-color':'#c4786c', 'line-width':2, 'line-opacity':0.8, 'line-dasharray':[3,2] }
+  });
+
+  // 2. Optional syndicate link lines (empty until HEV_SYNDICATE_LINKS has ids)
+  map.addSource('connections', { type:'geojson', data: buildConnectionsGeoJSON() });
+  map.addLayer({ id:'conn-lines', type:'line', source:'connections',
+    paint:{
+      'line-color':'#c4786c', 'line-width':1.2,
+      'line-opacity':0.45, 'line-dasharray':[4,5]
+    }
+  });
+
+  // 3. Try to add 3D buildings from the CARTO style
+  try {
+    const layers = map.getStyle().layers;
+    const bld = layers.find(l => l['source-layer'] === 'building');
+    if (bld) {
+      map.addLayer({
+        id: '3d-buildings', type: 'fill-extrusion',
+        source: bld.source, 'source-layer': 'building',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': '#1a0e12',
+          'fill-extrusion-height': ['interpolate',['linear'],['zoom'],14,0,16,['coalesce',['get','render_height'],['get','height'],10]],
+          'fill-extrusion-base':   ['coalesce',['get','render_min_height'],0],
+          'fill-extrusion-opacity': 0.85,
+        }
+      }, bld.id);
+    }
+  } catch(_) {}
+
+  // 4. Place all markers
+  PLACES.forEach(place => {
+    const el     = buildMarkerEl(place);
+    const marker = new maplibregl.Marker({ element: el, anchor:'center' })
+      .setLngLat(place.coords)
+      .addTo(map);
+    markerMap[place.id]   = marker;
+    markerElMap[place.id] = el;
+  });
+
+  const cen = hevCentroid();
+  if (markerMap['hev']) markerMap['hev'].setLngLat(cen);
+  const hevPlace = PLACES.find(p => p.id === 'hev');
+  if (hevPlace) hevPlace.coords = cen;
+  try {
+    if (map.getSource('connections')) map.getSource('connections').setData(buildConnectionsGeoJSON());
+  } catch (_) {}
+
+  const initialPlace = getInitialPlaceId();
+  setTimeout(() => {
+    selectPlace(initialPlace || 'hev');
+    syncNavTabForPlace(initialPlace || 'hev');
+  }, initialPlace ? 700 : 1400);
+
+  // Dismiss loading screen once tiles start rendering
+  const ld  = document.getElementById('loading');
+  const bar = document.getElementById('load-bar');
+  let pct = 0;
+  const timer = setInterval(() => {
+    pct += Math.random() * 25;
+    bar.style.width = Math.min(pct, 100) + '%';
+    if (pct >= 100) {
+      clearInterval(timer);
+      setTimeout(() => {
+        ld.style.opacity = '0';
+        setTimeout(() => ld.style.display = 'none', 800);
+      }, 300);
+    }
+  }, 70);
+
+});
+
+function getInitialPlaceId() {
+  const q = new URLSearchParams(window.location.search);
+  const p = (q.get('place') || q.get('p') || '').trim();
+  if (p && PLACES.some((x) => x.id === p)) return p;
+  const h = (window.location.hash || '').replace(/^#/, '').split('?')[0].trim();
+  if (h && PLACES.some((x) => x.id === h)) return h;
+  return null;
+}
+
+function syncNavTabForPlace(id) {
+  const ratseyBtn = document.getElementById('nav-ratsey-tab');
+  const mapLink = document.querySelector('.nav-map-link');
+  if (!ratseyBtn || !mapLink) return;
+  if (id === 'ratsey') {
+    ratseyBtn.classList.add('active');
+    mapLink.classList.remove('active');
+  } else {
+    ratseyBtn.classList.remove('active');
+    mapLink.classList.add('active');
+  }
+}
+
+window.flyToRatsey = function () {
+  selectPlace('ratsey');
+  syncNavTabForPlace('ratsey');
+};
+
+window.flyToRatseyFromNav = function () {
+  flyToRatsey();
+};
+
+// ── Select a place ────────────────────────────────────────────────────────────
+function selectPlace(id) {
+  const place = PLACES.find(p => p.id === id);
+  if (!place) return;
+
+  // Deselect previous
+  if (selectedId && markerElMap[selectedId]) {
+    markerElMap[selectedId].classList.remove('selected');
+  }
+  selectedId = id;
+  if (markerElMap[id]) markerElMap[id].classList.add('selected');
+
+  const targetZoom =
+    place.type === 'vineyard' || place.type === 'conservation'
+      ? 14.5
+      : place.type === 'partner_loft'
+        ? 15.35
+        : 13.8;
+  const bearing = place.type === 'partner_loft' ? 32 : -8;
+  const duration = place.distant ? 2400 : 1400;
+
+  map.flyTo({
+    center: place.coords,
+    zoom: Math.max(map.getZoom(), targetZoom),
+    pitch: 50,
+    bearing,
+    duration,
+    essential: true,
+  });
+
+  renderInfoPanel(place);
+  syncNavTabForPlace(id);
+
+  // On mobile, slide the sheet up
+  if (window.innerWidth <= 640) {
+    document.getElementById('info-panel').classList.add('sheet-open');
+  }
+}
+
+window.selectPlaceById = selectPlace;
+
+// ── Mobile: close bottom sheet ────────────────────────────────────────────────
+window.closeSheet = function() {
+  document.getElementById('info-panel').classList.remove('sheet-open');
+};
+
+// ── Mobile: filter panel toggle ───────────────────────────────────────────────
+window.toggleFilterPanel = function() {
+  const fp  = document.getElementById('filter-panel');
+  const btn = document.getElementById('filter-toggle-btn');
+  const open = fp.classList.toggle('open');
+  btn.classList.toggle('active', open);
+};
+
+// ── Info panel renderer ───────────────────────────────────────────────────────
+function renderInfoPanel(place) {
+  const color  = TYPE_COLOR[place.type]  || '#e8f5e8';
+  const label  = TYPE_LABEL[place.type]  || place.type;
+  const stats  = place.localStats || {};
+
+  let html = `
+    <div class="ip-header">
+      <div class="ip-name" style="color:${color}">${esc(place.name)}</div>
+      <div class="ip-sub">${esc(place.subtitle || '')}</div>
+      <span class="ip-type-badge">${esc(label)}</span>
+      <div class="ip-coords">${fmtCoords(place.coords)}</div>
+    </div>
+    <div class="ip-body">
+      <p class="ip-desc">${esc(place.desc || '')}</p>
+  `;
+
+  if (place.type === 'vineyard') {
+    html += `
+      <div class="stat-grid-2">
+        <div class="stat-tile"><span class="stat-val">${fmtNum(stats.vines)}</span><span class="stat-lbl">Vines (est.)</span></div>
+        <div class="stat-tile"><span class="stat-val teal">${fmtNum(stats.bottlesReserved)}</span><span class="stat-lbl">Bottles reserved</span></div>
+        <div class="stat-tile"><span class="stat-val">${fmtNum(stats.syndicateMembers)}</span><span class="stat-lbl">Syndicate members</span></div>
+        <div class="stat-tile"><span class="stat-val amber">${fmtNum(stats.acres)}</span><span class="stat-lbl">Acres</span></div>
+        <div class="stat-tile gold"><span class="stat-val gold">${fmtNum(stats.standing)}</span><span class="stat-lbl">Standing pts</span></div>
+        <div class="stat-tile"><span class="stat-val">${esc(String(stats.harvestYear || '—'))}</span><span class="stat-lbl">Vintage focus</span></div>
+      </div>
+    `;
+    if (place.features) {
+      html += `<div class="feature-chips">${place.features.split(',').map(f=>`<span class="feature-chip">${esc(f.trim())}</span>`).join('')}</div>`;
+    }
+    const mapsBtn = place.googleMaps
+      ? `<a class="ip-link-btn" href="${esc(place.googleMaps)}" target="_blank" rel="noopener" style="color:var(--teal);border-color:rgba(90,155,140,0.35)">📷 Maps</a>`
+      : '';
+    html += `<div class="ip-links-row">
+      <a class="ip-link-btn ip-link-green" href="${esc(place.link||'#')}">↗ Syndicate passport</a>
+      ${mapsBtn}
+      <button class="ip-link-btn ip-link-muted" onclick="openModal('${place.id}')">Full record</button>
+    </div>
+    <button id="hev-edit-btn" class="ip-link-btn" onclick="toggleHEVEdit()"
+      style="margin-top:8px;width:100%;border:1px dashed var(--green);color:var(--bright);background:transparent;cursor:pointer">
+      ✏ Edit boundary
+    </button>`;
+
+  } else if (place.type === 'conservation') {
+    html += `
+      <div class="stat-grid-2">
+        <div class="stat-tile"><span class="stat-val">${fmtNum(stats.trees)}</span><span class="stat-lbl">Trees Registered</span></div>
+        <div class="stat-tile"><span class="stat-val teal">${fmtNum(stats.species)}</span><span class="stat-lbl">Species</span></div>
+        <div class="stat-tile"><span class="stat-val">${fmtNum(stats.co2)}t</span><span class="stat-lbl">CO₂/year est.</span></div>
+        <div class="stat-tile"><span class="stat-val amber">${fmtNum(stats.hours)}h</span><span class="stat-lbl">Vol. Hours</span></div>
+        <div class="stat-tile gold"><span class="stat-val gold">${fmtNum(stats.karma)}</span><span class="stat-lbl">Total Karma</span></div>
+        <div class="stat-tile"><span class="stat-val">${fmtNum(stats.visitors)}</span><span class="stat-lbl">Visitors</span></div>
+      </div>
+    `;
+    if (place.features) {
+      html += `<div class="feature-chips">${place.features.split(',').map(f=>`<span class="feature-chip">${esc(f.trim())}</span>`).join('')}</div>`;
+    }
+    html += `<div class="ip-links-row">
+      <a class="ip-link-btn ip-link-green" href="${esc(place.link||'#')}" target="_blank">↗ Book a Visit</a>
+      <a class="ip-link-btn ip-link-gold"  href="../passport.html">↗ Passport</a>
+      <button class="ip-link-btn ip-link-muted" onclick="openModal('${place.id}')">Full Record</button>
+    </div>
+    <button id="hev-edit-btn" class="ip-link-btn" onclick="toggleHEVEdit()"
+      style="margin-top:8px;width:100%;border:1px dashed var(--green);color:var(--bright);background:transparent;cursor:pointer">
+      ✏ Edit Boundary
+    </button>`;
+
+  } else if (place.type === 'partner_loft') {
+    html += `
+      <div class="stat-grid-2">
+        <div class="stat-tile gold"><span class="stat-val gold">${fmtNum(stats.founded)}</span><span class="stat-lbl">Trading since</span></div>
+        <div class="stat-tile"><span class="stat-val teal">${fmtNum(stats.cowesSqFt)}</span><span class="stat-lbl">Cowes loft · ft²</span></div>
+        <div class="stat-tile"><span class="stat-val">${fmtNum(stats.barcelonaSqFt)}</span><span class="stat-lbl">Barcelona · ft²</span></div>
+        <div class="stat-tile"><span class="stat-val amber">${esc(String(stats.bagCollectionYear || '—'))}</span><span class="stat-lbl">Bag collection yr.</span></div>
+      </div>
+      <p style="font-size:0.58rem;color:var(--muted);margin:10px 0 6px;line-height:1.5">
+        Mon–Thu 7:30–16:00 · Fri 7:30–12:00 (Cowes) · Also <strong>Barcelona</strong> loft — see site contact.
+      </p>
+      <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-bottom:8px">
+        📞 <a href="tel:${esc(String(place.phone || '').replace(/[^\d+]/g, ''))}" style="color:var(--teal)">${esc(place.phone || '')}</a>
+        &nbsp;·&nbsp; ✉️ <a href="mailto:${esc(place.email || '')}" style="color:var(--teal)">${esc(place.email || '')}</a>
+      </div>
+    `;
+    const extras = (place.extraLinks || [])
+      .map(
+        (l) =>
+          `<a class="ip-link-btn" href="${esc(l.url)}" target="_blank" rel="noopener" style="color:#8eb4d4;border-color:rgba(110,160,200,0.4)">↗ ${esc(l.label)}</a>`
+      )
+      .join('');
+    const mapsBtn = place.googleMaps
+      ? `<a class="ip-link-btn" href="${esc(place.googleMaps)}" target="_blank" rel="noopener" style="color:var(--teal);border-color:rgba(90,155,140,0.35)">📍 Directions</a>`
+      : '';
+    html += `<div class="ip-links-row" style="flex-wrap:wrap">
+      <a class="ip-link-btn ip-link-gold" href="${esc(place.link)}" target="_blank" rel="noopener">↗ ratseyandlapthorn.com</a>
+      ${extras}
+      ${mapsBtn}
+      <button class="ip-link-btn ip-link-muted" onclick="openModal('${place.id}')">Full record</button>
+    </div>`;
+
+  } else if (place.type.startsWith('hotel_')) {
+    const karmaMax = 20000;
+    const karmaPct = Math.min(100, Math.round((stats.karma||0) / karmaMax * 100));
+
+    // PV Neighbour badge
+    if (place.pvNeighbour) {
+      html += `
+        <div style="display:flex;align-items:center;gap:7px;
+             background:rgba(125,219,125,0.08);border:1px solid rgba(125,219,125,0.3);
+             border-radius:6px;padding:7px 10px;margin-bottom:10px">
+          <span style="font-size:1rem">🌿</span>
+          <div>
+            <div style="font-family:var(--sans);font-size:0.64rem;font-weight:600;color:var(--bright)">Pulmón Verde Neighbour</div>
+            <div style="font-family:var(--mono);font-size:0.57rem;color:var(--muted)">Directly adjacent · Highest-priority partner</div>
+          </div>
+        </div>`;
+    }
+
+    const rankDisplay = stats.rank ? `#${stats.rank}` : 'Prospective';
+    html += `
+      <div class="rank-chip">Leaderboard <strong style="font-size:.75rem">${rankDisplay}</strong> <span style="color:var(--muted)">of 24</span></div>
+      <div class="karma-bar-wrap">
+        <div class="karma-bar-label"><span>Karma</span><span style="color:var(--gold)">${stats.karma ? fmtNum(stats.karma) : 'Not yet enrolled'}</span></div>
+        <div class="karma-bar-track"><div class="karma-bar-fill" style="width:${karmaPct}%"></div></div>
+      </div>
+      <div class="stat-grid-2">
+        <div class="stat-tile gold"><span class="stat-val gold">${stats.karma ? fmtNum(stats.karma) : '—'}</span><span class="stat-lbl">Karma</span></div>
+        <div class="stat-tile"><span class="stat-val">${stats.avatars ? fmtNum(stats.avatars) : '—'}</span><span class="stat-lbl">Guests Sent</span></div>
+        <div class="stat-tile"><span class="stat-val teal">${stats.trees ? fmtNum(stats.trees) : '—'}</span><span class="stat-lbl">Trees Sponsored</span></div>
+        <div class="stat-tile"><span class="stat-val">${stats.co2 ? stats.co2+'t' : '—'}</span><span class="stat-lbl">CO₂ Attributed</span></div>
+      </div>
+    `;
+    // GM card
+    if (place.gm && place.gm.name !== 'TBC') {
+      html += `
+        <div style="display:flex;align-items:center;gap:8px;
+             background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);
+             border-radius:6px;padding:7px 10px;margin-bottom:10px">
+          <span style="font-size:1rem;flex-shrink:0">👤</span>
+          <div>
+            <div style="font-family:var(--sans);font-size:0.64rem;font-weight:600;color:var(--amber)">${esc(place.gm.name)}</div>
+            <div style="font-family:var(--mono);font-size:0.57rem;color:var(--muted)">${esc(place.gm.title)}</div>
+          </div>
+        </div>`;
+    }
+
+    const linkHtml = place.link
+      ? `<a class="ip-link-btn ip-link-gold" href="${esc(place.link)}" target="_blank">↗ Hotel Dashboard</a>`
+      : '';
+    const photosLink = place.googleMaps
+      ? `<a class="ip-link-btn" href="${esc(place.googleMaps)}" target="_blank" style="color:var(--teal);border-color:rgba(78,205,196,0.3)">📷 View Photos</a>`
+      : '';
+    html += `<div class="ip-links-row">${linkHtml}${photosLink}<button class="ip-link-btn ip-link-muted" onclick="openModal('${place.id}')">Full Record</button></div>`;
+
+    if (place.distant) {
+      html += `<p style="font-size:0.58rem;color:var(--muted);margin-top:10px">⚠ Located in Tulum (~65 km south). Map flew there on selection.</p>`;
+    }
+
+  } else if (place.type === 'gym') {
+    html += `
+      <div class="stat-grid-2">
+        <div class="stat-tile"><span class="stat-val" style="color:#e8763a">${stats.disciplines||'—'}</span><span class="stat-lbl">Disciplines</span></div>
+        <div class="stat-tile"><span class="stat-val">${stats.classesPerDay||'—'}</span><span class="stat-lbl">Classes / Day</span></div>
+        <div class="stat-tile"><span class="stat-val amber">${stats.experience||'—'} yrs</span><span class="stat-lbl">Head Coach Exp.</span></div>
+        <div class="stat-tile"><span class="stat-val teal">${stats.members||'—'}</span><span class="stat-lbl">Members</span></div>
+      </div>
+    `;
+    if (place.address) {
+      html += `<div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin:10px 0 2px">📍 ${esc(place.address)}</div>`;
+    }
+    if (place.phone) {
+      html += `<div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-bottom:10px">📞 ${esc(place.phone)}</div>`;
+    }
+
+    // TripAdvisor badge
+    if (place.tripadvisor) {
+      const ta = place.tripadvisor;
+      html += `
+        <a href="${esc(ta.url)}" target="_blank" style="display:flex;align-items:center;gap:8px;
+           background:rgba(52,183,113,0.08);border:1px solid rgba(52,183,113,0.25);border-radius:6px;
+           padding:7px 10px;margin-bottom:10px;text-decoration:none;color:var(--text)">
+          <span style="font-size:1rem">🟢</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:var(--sans);font-size:0.65rem;font-weight:600;color:#34b771">
+              TripAdvisor — #${ta.rank} of ${ta.total} ${esc(ta.label)}
+            </div>
+            <div style="font-family:var(--mono);font-size:0.58rem;color:var(--muted)">
+              ${'★'.repeat(Math.round(ta.rating))} · ${ta.reviewCount} reviews
+            </div>
+          </div>
+          <span style="font-size:0.6rem;color:var(--muted)">↗</span>
+        </a>`;
+    }
+
+    // Reviews
+    if (place.reviews && place.reviews.length) {
+      html += `<div style="margin-bottom:10px">`;
+      place.reviews.forEach(r => {
+        html += `
+          <div style="border-left:2px solid rgba(232,118,58,0.4);padding:6px 10px;margin-bottom:8px;
+                      background:rgba(232,118,58,0.05);border-radius:0 4px 4px 0">
+            <div style="font-size:0.65rem;color:#e8a87c;margin-bottom:3px">
+              ${'★'.repeat(r.stars)} <span style="color:var(--muted);margin-left:4px">${esc(r.author)}</span>
+            </div>
+            <div style="font-family:var(--serif);font-style:italic;font-size:0.72rem;
+                        color:var(--text);line-height:1.5">"${esc(r.text)}"</div>
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `<div class="ip-links-row">
+      <a class="ip-link-btn" href="${esc(place.link||'#')}" target="_blank"
+         style="background:rgba(232,118,58,0.15);border-color:#e8763a;color:#e8763a">↗ Website</a>
+      <a class="ip-link-btn ip-link-muted" href="${esc(place.tripadvisor?.url||'#')}" target="_blank">↗ TripAdvisor</a>
+    </div>`;
+
+  } else if (place.type === 'anchor' && stats.karma) {
+    html += `<div class="stat-grid-2">
+      <div class="stat-tile gold"><span class="stat-val gold">${fmtNum(stats.karma)}</span><span class="stat-lbl">Total Karma</span></div>
+      <div class="stat-tile"><span class="stat-val">${fmtNum(stats.avatars)}</span><span class="stat-lbl">Avatars</span></div>
+      <div class="stat-tile"><span class="stat-val teal">${fmtNum(stats.hotels)}</span><span class="stat-lbl">Partners</span></div>
+      <div class="stat-tile"><span class="stat-val">${fmtNum(stats.trees)}</span><span class="stat-lbl">Trees</span></div>
+    </div>`;
+  } else if (place.type === 'anchor' && stats.populationApprox != null) {
+    html += `<div class="stat-grid-2">
+      <div class="stat-tile"><span class="stat-val">${fmtNum(stats.populationApprox)}</span><span class="stat-lbl">Population (approx.)</span></div>
+      <div class="stat-tile"><span class="stat-val teal">${fmtNum(stats.distanceNewburyMiles)} mi</span><span class="stat-lbl">→ Newbury</span></div>
+      <div class="stat-tile"><span class="stat-val amber">${fmtNum(stats.distanceReadingMiles)} mi</span><span class="stat-lbl">→ Reading</span></div>
+      <div class="stat-tile"><span class="stat-val gold">${esc(String(stats.postcodes||'—'))}</span><span class="stat-lbl">Postcode area</span></div>
+    </div>
+    <div class="ip-links-row" style="margin-top:10px">
+      <a class="ip-link-btn ip-link-muted" href="https://maps.google.com/?q=Brimpton+West+Berkshire" target="_blank" rel="noopener">📷 Brimpton on Maps</a>
+      <button class="ip-link-btn ip-link-muted" onclick="openModal('${place.id}')">Full record</button>
+    </div>`;
+  }
+
+  // ── STAR Holon badge (every object on this map is a real STAR Holon) ──────
+  if (place.starHolonId) {
+    const short = place.starHolonId.substring(0, 8) + '…';
+    html += `
+      <div class="star-holon-block" id="star-block-${place.id}">
+        <div class="star-holon-header">
+          <span class="star-dot">★</span>
+          <span class="star-label">STAR Holon</span>
+          <span class="star-id">${short}</span>
+        </div>
+        <div class="star-holon-footer">
+          <a class="ip-link-btn star-api-btn"
+             href="http://127.0.0.1:5001/api/Holons/${place.starHolonId}"
+             target="_blank">↗ View Raw Holon</a>
+          <button class="ip-link-btn star-live-btn" onclick="loadStarHolon('${place.id}','${place.starHolonId}')">⟳ Load Live Data</button>
+        </div>
+        <div class="star-holon-live" id="star-live-${place.id}" style="display:none"></div>
+      </div>`;
+  }
+
+  html += `</div>`; // close ip-body
+  const ipContent = document.getElementById('ip-content');
+  if (ipContent) ipContent.innerHTML = html;
+  else document.getElementById('info-panel').innerHTML = html;
+}
+
+// ── Load live data from STAR API ─────────────────────────────────────────────
+window.loadStarHolon = async function(placeId, holonId) {
+  const liveEl = document.getElementById(`star-live-${placeId}`);
+  const btn = document.querySelector(`#star-block-${placeId} .star-live-btn`);
+  if (!liveEl) return;
+  liveEl.style.display = 'block';
+  liveEl.innerHTML = '<span style="color:var(--muted);font-size:0.6rem">Fetching from STAR API…</span>';
+  if (btn) { btn.textContent = '⟳ Loading…'; btn.disabled = true; }
+  try {
+    // Auth first
+    const authRes = await fetch('http://127.0.0.1:5001/api/Avatar/authenticate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username: window.OASIS_STAR_USER || 'OASIS_ADMIN', password: window.OASIS_STAR_PASS || '' })
+    });
+    const authData = await authRes.json();
+    const jwt = authData?.result?.result?.jwtToken;
+    if (!jwt) throw new Error('Auth failed');
+    // Load holon
+    const res = await fetch(`http://127.0.0.1:5001/api/Holons/${holonId}`, {
+      headers: { 'Authorization': `Bearer ${jwt}` }
+    });
+    const data = await res.json();
+    const h = data?.result;
+    if (!h) throw new Error('No holon data');
+    const meta = h.metaData || {};
+    const created = h.createdDate ? new Date(h.createdDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const rows = Object.entries(meta)
+      .filter(([k]) => !['STARHolonDNAJSON','HolonDNAJSON','PublishedSTARNETHolon'].includes(k))
+      .map(([k,v]) => `<tr><td class="sh-key">${esc(String(k))}</td><td class="sh-val">${esc(String(v))}</td></tr>`).join('');
+    liveEl.innerHTML = `
+      <div class="sh-meta">
+        <div class="sh-row-head"><span>v${h.version||1} · Created ${created}</span><span style="color:var(--muted)">MongoDBOASIS</span></div>
+        ${rows ? `<table class="sh-table">${rows}</table>` : ''}
+      </div>`;
+  } catch(e) {
+    liveEl.innerHTML = `<span style="color:#ff6b6b;font-size:0.6rem">⚠ ${e.message}</span>`;
+  }
+  if (btn) { btn.textContent = '⟳ Refresh'; btn.disabled = false; }
+};
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+window.openModal = function(id) {
+  const place = PLACES.find(p => p.id === id);
+  if (!place) return;
+  const color  = TYPE_COLOR[place.type]  || '#e8f5e8';
+  const label  = TYPE_LABEL[place.type]  || place.type;
+  const stats  = place.localStats || {};
+
+  document.getElementById('modal-title').innerHTML = `<span style="color:${color}">${esc(place.name)}</span>`;
+  document.getElementById('modal-sub').innerHTML = `
+    <span style="font-family:var(--mono);font-size:0.6rem;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(74,155,74,0.15);color:var(--muted)">${esc(label)}</span>
+    &nbsp;<span style="color:var(--muted)">${esc(place.subtitle||'')}</span>
+  `;
+
+  let body = `<p class="modal-desc">${esc(place.desc||'—')}</p>`;
+
+  if (place.type === 'vineyard') {
+    body += `<details class="modal-nest" open><summary>Vineyard & syndicate (demo)</summary>
+      <div style="padding:10px 0 6px">
+        <div class="modal-stat-grid">
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#c4786c">${fmtNum(stats.vines)}</span><span class="modal-stat-lbl">Vines</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#5a9b8c">${fmtNum(stats.bottlesReserved)}</span><span class="modal-stat-lbl">Bottles reserved</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#c9a84c">${fmtNum(stats.standing)}</span><span class="modal-stat-lbl">Standing</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val">${fmtNum(stats.syndicateMembers)}</span><span class="modal-stat-lbl">Members</span></div>
+        </div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Acres</span><span class="modal-meta-val">${fmtNum(stats.acres)}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Vintage focus</span><span class="modal-meta-val">${esc(String(stats.harvestYear||'—'))}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Coordinates</span><span class="modal-meta-val">${fmtCoords(place.coords)}</span></div>
+      </div>
+    </details>`;
+    if (place.features) {
+      body += `<details class="modal-nest" open><summary>Product hooks</summary>
+        <div style="padding:8px 0 6px;display:flex;flex-wrap:wrap;gap:4px">
+          ${place.features.split(',').map(f=>`<span class="modal-lang-chip">${esc(f.trim())}</span>`).join('')}
+        </div>
+      </details>`;
+    }
+  } else if (place.type === 'partner_loft') {
+    body += `<details class="modal-nest" open><summary>Ratsey &amp; Lapthorn · quick facts</summary>
+      <div style="padding:10px 0 6px">
+        <div class="modal-stat-grid">
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#6ea0c8">${fmtNum(stats.founded)}</span><span class="modal-stat-lbl">Since</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val">${fmtNum(stats.cowesSqFt)}</span><span class="modal-stat-lbl">Cowes ft²</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#5a9b8c">${fmtNum(stats.barcelonaSqFt)}</span><span class="modal-stat-lbl">Barcelona ft²</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#c9a84c">${esc(String(stats.bagCollectionYear||'—'))}</span><span class="modal-stat-lbl">Bags</span></div>
+        </div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Cowes phone</span><span class="modal-meta-val">${esc(place.phone||'—')}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Email</span><span class="modal-meta-val">${esc(place.email||'—')}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Site</span><span class="modal-meta-val"><a href="${esc(place.link)}" target="_blank" rel="noopener" style="color:var(--teal)">ratseyandlapthorn.com</a></span></div>
+      </div>
+    </details>`;
+  } else if (place.type === 'conservation') {
+    body += `<details class="modal-nest" open><summary>Live Conservation Stats</summary>
+      <div style="padding:10px 0 6px">
+        <div class="modal-stat-grid">
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#7ddb7d">${fmtNum(stats.trees)}</span><span class="modal-stat-lbl">Trees</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#4ecdc4">${fmtNum(stats.species)}</span><span class="modal-stat-lbl">Species</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#7ddb7d">${fmtNum(stats.co2)}t</span><span class="modal-stat-lbl">CO₂/yr</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#c9a84c">${fmtNum(stats.hours)}h</span><span class="modal-stat-lbl">Vol. Hours</span></div>
+        </div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Total Karma</span><span class="modal-meta-val" style="color:#c9a84c">${fmtNum(stats.karma)}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Visitors Onboarded</span><span class="modal-meta-val">${fmtNum(stats.visitors)}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">GPS Coordinates</span><span class="modal-meta-val">${fmtCoords(place.coords)}</span></div>
+      </div>
+    </details>`;
+    if (place.features) {
+      body += `<details class="modal-nest" open><summary>OASIS STAR Features</summary>
+        <div style="padding:8px 0 6px;display:flex;flex-wrap:wrap;gap:4px">
+          ${place.features.split(',').map(f=>`<span class="modal-lang-chip">${esc(f.trim())}</span>`).join('')}
+        </div>
+      </details>`;
+    }
+  } else if (place.type.startsWith('hotel_')) {
+    body += `<details class="modal-nest" open><summary>Hotel Ecosystem Stats</summary>
+      <div style="padding:10px 0 6px">
+        <div class="modal-stat-grid">
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#c9a84c">${fmtNum(stats.karma)}</span><span class="modal-stat-lbl">Karma</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val">${fmtNum(stats.avatars)}</span><span class="modal-stat-lbl">Guests</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val" style="color:#4ecdc4">${fmtNum(stats.trees)}</span><span class="modal-stat-lbl">Trees</span></div>
+          <div class="modal-stat-tile"><span class="modal-stat-val">${stats.co2 ? stats.co2+'t' : '—'}</span><span class="modal-stat-lbl">CO₂</span></div>
+        </div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Leaderboard Rank</span><span class="modal-meta-val" style="color:#c9a84c">#${stats.rank||'—'} of 24</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Tier</span><span class="modal-meta-val" style="color:${color}">${esc(stats.tier||'—')}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">Region</span><span class="modal-meta-val">${esc(place.region||'—')}</span></div>
+        <div class="modal-meta-row"><span class="modal-meta-key">GPS Coordinates</span><span class="modal-meta-val">${fmtCoords(place.coords)}</span></div>
+      </div>
+    </details>`;
+  }
+
+  body += `<details class="modal-nest"><summary>Location Data</summary>
+    <div style="padding:6px 0 6px">
+      <div class="modal-meta-row"><span class="modal-meta-key">Region</span><span class="modal-meta-val">${esc(place.region||'—')}</span></div>
+      <div class="modal-meta-row"><span class="modal-meta-key">Sector</span><span class="modal-meta-val">${esc(place.sector||'—')}</span></div>
+      <div class="modal-meta-row"><span class="modal-meta-key">Coordinates</span><span class="modal-meta-val">${fmtCoords(place.coords)}</span></div>
+    </div>
+  </details>`;
+
+  if (place.link) {
+    const isAbs = /^https?:\/\//i.test(place.link);
+    const tgt = isAbs ? ' target="_blank" rel="noopener"' : '';
+    body += `<div style="margin-top:14px"><a class="modal-ext-link" href="${esc(place.link)}"${tgt}>↗ ${esc(place.link.replace(/https?:\/\//,''))}</a></div>`;
+  }
+
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('sysModal').classList.add('open');
+};
+
+document.getElementById('modal-close-btn').addEventListener('click', () => {
+  document.getElementById('sysModal').classList.remove('open');
+});
+document.getElementById('sysModal').addEventListener('click', e => {
+  if (e.target.id === 'sysModal') document.getElementById('sysModal').classList.remove('open');
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.getElementById('sysModal').classList.remove('open');
+});
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+window.filterPlaces = type => {
+  document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-filter="${type}"]`)?.classList.add('active');
+  PLACES.forEach(p => {
+    const show = type === 'all' || p.type === type;
+    const el = markerElMap[p.id];
+    if (el) el.style.display = show ? '' : 'none';
+  });
+};
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+window.toggleConnections = () => {
+  showConns = !showConns;
+  if (map.getLayer('conn-lines')) map.setLayoutProperty('conn-lines', 'visibility', showConns ? 'visible' : 'none');
+  document.getElementById('conn-btn').classList.toggle('active', showConns);
+};
+window.toggleLabels = () => {
+  showLabels = !showLabels;
+  document.querySelectorAll('.marker-label').forEach(el => el.style.display = showLabels ? '' : 'none');
+  document.getElementById('lbl-btn').classList.toggle('active', showLabels);
+};
+window.flyToHEV = () => {
+  map.flyTo({ center:[-1.19845, 51.37585], zoom:15, pitch:48, bearing:-18, duration:1800, essential:true });
+  selectPlace('hev');
+};
+window.flyToAll = () => {
+  // Brimpton / Hyde End + Isle of Wight (Cowes) in one frame
+  map.fitBounds(
+    [
+      [-1.38, 50.70],
+      [-1.08, 51.42],
+    ],
+    { pitch: 38, bearing: -14, padding: { top: 60, bottom: 50, left: 200, right: 320 }, duration: 2000 }
+  );
+};
+
+// ── Tally strip ───────────────────────────────────────────────────────────────
+const tallyEl = document.getElementById('tally');
+PLACES.forEach(p => {
+  const div = document.createElement('div');
+  div.className = 'tally-item';
+  div.textContent = p.shortName;
+  div.style.color = TYPE_COLOR[p.type] || '#e8f5e8';
+  div.onclick = () => selectPlace(p.id);
+  tallyEl.appendChild(div);
+});
+
+window.addEventListener('hashchange', () => {
+  const h = (window.location.hash || '').replace(/^#/, '').split('?')[0].trim();
+  if (h && PLACES.some((x) => x.id === h)) {
+    selectPlace(h);
+    syncNavTabForPlace(h);
+  }
+});
+
+</script>
+
+<!-- Vineyard boundary edit panel — shown when Edit boundary is active -->
+<div id="hev-edit-panel" style="
+  display:none;
+  position:fixed;
+  bottom:80px;
+  left:50%;
+  transform:translateX(-50%);
+  background:rgba(12,6,8,0.96);
+  border:1px solid var(--green);
+  border-radius:8px;
+  padding:12px 16px;
+  font-family:var(--mono);
+  font-size:0.65rem;
+  color:var(--text);
+  line-height:1.8;
+  z-index:800;
+  min-width:260px;
+  box-shadow:0 0 20px rgba(139,58,74,0.35);
+  pointer-events:none;
+">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <span style="color:var(--bright);font-weight:700;letter-spacing:.08em">HYDE END PARCEL · DRAG CORNERS</span>
+    <button onclick="navigator.clipboard.writeText(JSON.stringify(window.hevCorners,null,2)).then(()=>{this.textContent='✓ Copied!';setTimeout(()=>this.textContent='📋 Copy',1500)})"
+      style="pointer-events:auto;background:rgba(196,120,108,0.15);border:1px solid var(--green);
+             color:var(--bright);font-family:var(--mono);font-size:0.6rem;padding:3px 8px;
+             border-radius:4px;cursor:pointer">📋 Copy</button>
+  </div>
+  <div id="hev-edit-coords" style="line-height:1.9"></div>
+  <div style="color:var(--muted);margin-top:8px;font-size:0.58rem">
+    Coords auto-save on every drag · localStorage key <code style="color:var(--amber)">hev-corners-v1</code>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "clients": [
+    {
+      "id": "hyde_end",
+      "displayName": "Hyde End Vineyard",
+      "oasisApiUrl": "https://api.oasisweb4.com",
+      "registryTag": "hyde_end_v1",
+      "serviceJwtEnv": "OASIS_JWT_HYDE_END"
+    },
+    {
+      "id": "demo_estate",
+      "displayName": "Demo Estate (file backend)",
+      "oasisApiUrl": "https://api.oasisweb4.com",
+      "registryTag": "demo_estate_v1",
+      "registryBackend": "file"
+    }
+  ]
+}

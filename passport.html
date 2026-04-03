@@ -1,0 +1,2400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hyde End — Founders passport</title>
+  <!-- Static: open via any HTTP server (e.g. python -m http.server) or copy into portals/public. Skybox: worldgen-oasis-demo/demo_blockade_english_vineyard.py -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --moss:        #8b3a4a;
+      --moss2:       #c4786c;
+      --moss-glow:   rgba(139,58,74,0.22);
+      --moss-border: rgba(196,120,108,0.4);
+      --gold:        #c9a84c;
+      --gold2:       #e8d4a0;
+      --teal:        #5a9b8c;
+      --amber:       #d4a84b;
+      --dim:         rgba(245,236,228,0.55);
+      --panel-bg:    rgba(22,12,14,0.88);
+      --void:        #0c0608;
+      --mono:        'DM Sans', ui-sans-serif, system-ui, sans-serif;
+      --display:     'Libre Baskerville', Georgia, serif;
+      --bar-h:       44px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: var(--void);
+      color: #e8f0e4;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    #viewport { position: fixed; inset: 0; z-index: 0; }
+
+    #vignette {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(ellipse at center,
+        transparent 28%,
+        rgba(18,8,10,0.52) 68%,
+        rgba(12,6,8,0.92) 100%
+      );
+    }
+
+    #scanlines {
+      position: fixed; inset: 0; z-index: 2; pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px
+      );
+    }
+
+    #hud {
+      position: fixed; inset: 0; z-index: 3;
+      display: flex; flex-direction: column;
+      pointer-events: none;
+    }
+    #hud > * { pointer-events: auto; }
+
+    #top-bar {
+      height: var(--bar-h);
+      background: rgba(6,18,12,0.94);
+      border-bottom: 1px solid var(--moss-border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.4rem;
+      flex-shrink: 0;
+      gap: 1rem;
+      min-width: 0;
+    }
+    .tb-section { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+    .tb-logo {
+      font-family: var(--display); font-size: 1.05rem; font-weight: 700;
+      color: var(--moss2); letter-spacing: 0.12em; text-transform: uppercase;
+    }
+    .tb-sep { color: var(--moss-border); flex-shrink: 0; }
+    .tb-sub { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.12em; text-transform: uppercase; }
+    #tb-farm-map {
+      font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.25rem 0.55rem; border-radius: 4px;
+      background: rgba(110,160,200,0.18); border: 1px solid rgba(110,160,200,0.42); color: #8eb4d4;
+      text-decoration: none; flex-shrink: 0; margin-right: 0.45rem; white-space: nowrap;
+      display: inline-flex; align-items: center;
+    }
+    #tb-farm-map:hover { color: #c8dff0; background: rgba(110,160,200,0.28); border-color: rgba(140,190,230,0.5); }
+    #tb-oasis-signin {
+      font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.25rem 0.5rem; border-radius: 4px;
+      background: rgba(61,184,168,0.2); border: 1px solid rgba(61,184,168,0.45); color: var(--teal);
+      cursor: pointer; flex-shrink: 0;
+    }
+    #tb-oasis-signin.hidden { display: none !important; }
+    .tb-center {
+      font-family: var(--display); font-size: 0.62rem; letter-spacing: 0.18em;
+      color: var(--moss); text-transform: uppercase;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    #tb-clock { font-size: 0.62rem; color: var(--dim); letter-spacing: 0.1em; }
+    .tier-badge {
+      font-size: 0.54rem; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.18rem 0.65rem;
+      border: 1px solid var(--moss);
+      color: var(--moss2);
+      font-family: var(--display);
+      font-weight: 600;
+    }
+    .tier-badge.seed { border-color: #4A9B4A; color: #7bc47b; }
+    .tier-badge.root { border-color: #8B6914; color: #c9a85c; }
+    .tier-badge.flower { border-color: #B85C8A; color: #e89bc4; }
+    .tier-badge.storm { border-color: #5A5AA0; color: #9b9bd4; }
+    .tier-badge.guardian { border-color: #1A7A7A; color: #5cc; }
+    .tier-badge.custodian { border-color: var(--gold); color: var(--gold2); box-shadow: 0 0 8px rgba(201,168,76,0.25); }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--teal); box-shadow: 0 0 6px var(--teal);
+      animation: blink 2.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    #grid {
+      flex: 1; overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 240px) 1fr minmax(0, 220px);
+      gap: 0.5rem; padding: 0.5rem;
+      min-width: 0;
+    }
+
+    .col {
+      display: flex; flex-direction: column; gap: 0.55rem;
+      overflow-y: auto; overflow-x: hidden; min-width: 0;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(90,143,90,0.3) transparent;
+    }
+    .col::-webkit-scrollbar { width: 3px; }
+    .col::-webkit-scrollbar-thumb { background: rgba(90,143,90,0.3); }
+
+    #col-center { pointer-events: none; }
+    #col-center > * { pointer-events: auto; }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--moss-border);
+      box-shadow: inset 0 0 22px var(--moss-glow), 0 0 14px rgba(0,0,0,0.45);
+      padding: 0.75rem 0.85rem;
+      backdrop-filter: blur(10px);
+      position: relative; overflow: hidden;
+      min-width: 0;
+    }
+    .panel::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--moss2), transparent);
+      opacity: 0.55;
+    }
+    .panel-hdr {
+      font-family: var(--display); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.16em; color: var(--moss2); text-transform: uppercase;
+      padding-bottom: 0.5rem; margin-bottom: 0.55rem;
+      border-bottom: 1px solid rgba(122,184,122,0.2);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .panel-hdr-tag {
+      font-size: 0.52rem; color: var(--dim); letter-spacing: 0.1em;
+      font-family: var(--mono);
+    }
+
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      gap: 0.4rem; padding: 0.22rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .lbl { font-size: 9px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+    .val { font-size: 11px; color: #e8f0e4; text-align: right; word-break: break-word; }
+    .val.gold  { color: var(--gold2); }
+    .val.green { color: var(--moss2); }
+    .val.cyan  { color: var(--teal); }
+    .val.mono  { font-family: var(--mono); font-size: 10px; }
+    .val.lg    { font-size: 1.1rem; font-family: var(--display); font-weight: 700; }
+    .val.badge {
+      display: inline-block; padding: 0.1rem 0.4rem;
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      border: 1px solid currentColor;
+    }
+    .val.badge.green { color: var(--moss2); }
+    .val.badge.gold  { color: var(--gold); }
+    .val.badge.cyan  { color: var(--teal); }
+    .val.badge.seed { color: #7bc47b; border-color: #4A9B4A; }
+    .val.badge.root { color: #c9a85c; border-color: #8B6914; }
+    .val.badge.flower { color: #e89bc4; border-color: #B85C8A; }
+    .val.badge.storm { color: #9b9bd4; border-color: #5A5AA0; }
+    .val.badge.guardian { color: #5cc; border-color: #1A7A7A; }
+    .val.badge.custodian { color: var(--gold2); border-color: var(--gold); }
+    .min-w-0 { min-width: 0; }
+    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0.5rem 0; }
+
+    .tg-connect-lead { font-size: 0.58rem; color: var(--dim); line-height: 1.45; margin: 0 0 0.5rem; }
+    .tg-connect-btn {
+      width: 100%; padding: 0.45rem 0.65rem;
+      font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: rgba(122,184,122,0.2); border: 1px solid var(--moss-border);
+      color: var(--moss2); cursor: pointer; border-radius: 4px;
+    }
+    .tg-connect-btn:disabled { opacity: 0.45; cursor: default; }
+    .tg-connect-status { font-size: 0.52rem; color: var(--teal); margin: 0.45rem 0 0; min-height: 1.2em; }
+
+    .oasis-auth-wrap { margin-top: 0.55rem; padding-top: 0.55rem; border-top: 1px solid rgba(122,184,122,0.15); }
+    .oasis-auth-wrap .oa-title {
+      font-size: 0.52rem; letter-spacing: 0.12em; color: var(--dim); text-transform: uppercase; margin-bottom: 0.45rem;
+    }
+    .oasis-auth-wrap input {
+      width: 100%; margin-bottom: 0.35rem; padding: 0.38rem 0.5rem;
+      font-family: var(--mono); font-size: 0.62rem;
+      background: rgba(0,0,0,0.35); border: 1px solid var(--moss-border); color: #e8f0e4; border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .oasis-auth-wrap input::placeholder { color: rgba(232,240,228,0.35); }
+    .oasis-auth-btn {
+      width: 100%; margin-top: 0.2rem; padding: 0.42rem 0.55rem;
+      font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase;
+      background: rgba(61,184,168,0.22); border: 1px solid rgba(61,184,168,0.45); color: var(--teal);
+      cursor: pointer; border-radius: 4px;
+    }
+    .oasis-auth-btn:disabled { opacity: 0.45; cursor: default; }
+    .oasis-auth-out {
+      margin-top: 0.35rem; padding: 0.32rem 0.5rem;
+      font-family: var(--mono); font-size: 0.52rem; letter-spacing: 0.08em;
+      background: transparent; border: 1px dashed rgba(122,184,122,0.35); color: var(--dim);
+      cursor: pointer; border-radius: 4px; width: 100%;
+    }
+    .oasis-auth-msg { font-size: 0.52rem; color: var(--dim); margin-top: 0.4rem; min-height: 1.1em; }
+    .oasis-auth-msg.err { color: #e8a090; }
+
+    #av-wrap { text-align: center; padding-bottom: 0.6rem; }
+    #av-ring {
+      width: 72px; height: 72px; border-radius: 50%;
+      margin: 0 auto 0.5rem;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--display); font-size: 1.5rem; font-weight: 700;
+      color: rgba(0,0,0,0.55);
+      border: 2px solid rgba(139,58,74,0.55);
+      box-shadow: 0 0 24px rgba(139,58,74,0.28), inset 0 0 12px rgba(139,58,74,0.12);
+      background: linear-gradient(135deg, #2a1418, #3d2228);
+      position: relative;
+    }
+    #av-ring::after {
+      content: '';
+      position: absolute; inset: -4px; border-radius: 50%;
+      border: 1px solid rgba(196,120,108,0.25);
+    }
+    #av-name {
+      font-family: var(--display); font-size: 1.05rem; font-weight: 700;
+      color: var(--moss2); letter-spacing: 0.06em;
+    }
+    #av-location { font-size: 0.62rem; color: var(--dim); margin-top: 0.2rem; letter-spacing: 0.06em; }
+    #av-since    { font-size: 0.6rem; color: var(--dim); margin-top: 0.1rem; }
+
+    .gauge-wrap { position: relative; width: 96px; height: 96px; margin: 0.3rem auto 0.5rem; }
+    #karma-svg { width: 96px; height: 96px; }
+    .gauge-center {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .gauge-val { font-family: var(--display); font-size: 1.15rem; font-weight: 700; color: var(--moss2); }
+    .gauge-lbl { font-size: 0.54rem; letter-spacing: 0.16em; color: var(--dim); text-transform: uppercase; }
+
+    .prog-wrap { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; min-width: 0; }
+    .prog-track { flex: 1; min-width: 0; height: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .prog-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--moss), var(--moss2));
+      box-shadow: 0 0 6px var(--moss);
+      transition: width 1.2s ease;
+    }
+    .prog-fill.cyan  { background: var(--teal);  box-shadow: 0 0 6px var(--teal); }
+    .prog-fill.green { background: var(--moss2); box-shadow: 0 0 6px var(--moss2); }
+    .prog-pct { font-size: 9px; color: var(--dim); white-space: nowrap; }
+
+    .stamps-grid { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.3rem; }
+    .stamp {
+      padding: 0.22rem 0.45rem; font-size: 0.52rem; letter-spacing: 0.06em;
+      border: 1px solid rgba(122,184,122,0.35);
+      color: var(--moss2); text-transform: uppercase; font-family: var(--display);
+      font-weight: 600;
+      position: relative; overflow: hidden;
+      max-width: 100%;
+      word-break: break-word;
+    }
+    .stamp.earned {
+      border-color: var(--moss2);
+      background: rgba(90,143,90,0.12);
+      box-shadow: 0 0 8px rgba(90,143,90,0.18);
+    }
+    .stamp.locked { opacity: 0.32; border-style: dashed; }
+
+    .quest-item {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      min-width: 0;
+    }
+    .quest-item:last-child { border-bottom: none; }
+    .quest-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+      background: var(--dim);
+    }
+    .quest-dot.done  { background: var(--moss2); box-shadow: 0 0 5px var(--moss2); }
+    .quest-dot.active { background: var(--gold); box-shadow: 0 0 5px var(--gold); animation: blink 1.8s ease-in-out infinite; }
+    .quest-name { font-size: 0.68rem; color: #e8f0e4; line-height: 1.35; word-break: break-word; }
+    .quest-meta { font-size: 0.58rem; color: var(--dim); margin-top: 0.1rem; word-break: break-word; }
+    .quest-meta strong { color: rgba(232, 212, 160, 0.95); font-weight: 600; }
+    .quest-reward { font-size: 0.6rem; color: var(--gold); margin-left: auto; white-space: nowrap; flex-shrink: 0; }
+    .quest-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.28rem; }
+    .quest-action {
+      align-self: flex-start;
+      margin-top: 0.05rem;
+      padding: 0.28rem 0.55rem;
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-family: var(--display);
+      color: #0c0608;
+      background: linear-gradient(165deg, var(--moss2), #5a8f5a);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.12s;
+    }
+    .quest-action:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+    .quest-action:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      background: rgba(122,184,122,0.25);
+      color: var(--dim);
+    }
+
+    #syndicate-toast {
+      position: fixed;
+      bottom: 1.1rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      max-width: min(92vw, 420px);
+      padding: 0.55rem 0.85rem;
+      font-size: 0.65rem;
+      line-height: 1.4;
+      color: #e8f0e4;
+      background: rgba(12, 6, 8, 0.92);
+      border: 1px solid rgba(201, 168, 76, 0.35);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+      z-index: 99999;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.28s ease-out;
+    }
+    #syndicate-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #syndicate-toast.err { border-color: rgba(232, 112, 112, 0.5); color: #f0c8c8; }
+
+    /* Syndicate modal — replaces browser confirm/prompt */
+    #syndicate-modal-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      background: rgba(6, 8, 10, 0.78);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    #syndicate-modal-scrim.open { display: flex; }
+    #syndicate-modal-card {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      max-height: min(88vh, 560px);
+      overflow: auto;
+      background: linear-gradient(168deg, rgba(32, 18, 22, 0.98) 0%, rgba(14, 8, 10, 0.99) 48%, rgba(18, 12, 14, 0.98) 100%);
+      border: 1px solid rgba(196, 120, 108, 0.45);
+      border-radius: 16px;
+      box-shadow:
+        0 0 0 1px rgba(201, 168, 76, 0.12),
+        0 28px 80px rgba(0, 0, 0, 0.65),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      padding: 1.35rem 1.45rem 1.2rem;
+      pointer-events: auto;
+      animation: syndicateModalIn 0.32s ease-out;
+    }
+    @keyframes syndicateModalIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    #syndicate-modal-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 1.5rem;
+      right: 1.5rem;
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+      background: linear-gradient(90deg, transparent, var(--gold), var(--teal), transparent);
+      opacity: 0.85;
+    }
+    .syndicate-modal-kicker {
+      font-size: 0.52rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.35rem;
+      font-weight: 600;
+    }
+    #syndicate-modal-title {
+      font-family: var(--display);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #f2ebe4;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+      margin-bottom: 0.35rem;
+    }
+    #syndicate-modal-sub {
+      font-size: 0.62rem;
+      color: var(--dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.85rem;
+      line-height: 1.4;
+    }
+    #syndicate-modal-body { margin-bottom: 1.1rem; }
+    #syndicate-modal-body:empty { display: none; margin: 0; }
+    .syndicate-modal-p {
+      font-size: 0.72rem;
+      line-height: 1.55;
+      color: rgba(232, 240, 228, 0.9);
+    }
+    .syndicate-modal-p strong { color: var(--gold2); font-weight: 600; }
+    .syndicate-modal-label {
+      display: block;
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin: 0.75rem 0 0.32rem;
+    }
+    .syndicate-modal-label:first-of-type { margin-top: 0; }
+    .syndicate-modal-hint { text-transform: none; letter-spacing: 0.04em; opacity: 0.75; font-size: 0.52rem; }
+    .syndicate-modal-input,
+    .syndicate-modal-textarea {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      font-size: 0.72rem;
+      font-family: var(--mono);
+      color: #e8f0e4;
+      background: rgba(8, 6, 8, 0.75);
+      border: 1px solid rgba(196, 120, 108, 0.35);
+      border-radius: 8px;
+      outline: none;
+    }
+    .syndicate-modal-input:focus,
+    .syndicate-modal-textarea:focus {
+      border-color: rgba(201, 168, 76, 0.55);
+      box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.12);
+    }
+    .syndicate-modal-textarea {
+      min-height: 4.5rem;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    #syndicate-modal-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 0.25rem;
+    }
+    .syndicate-modal-btn {
+      padding: 0.42rem 0.95rem;
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-family: var(--mono);
+      border-radius: 8px;
+      cursor: pointer;
+      border: 1px solid rgba(196, 120, 108, 0.45);
+      background: rgba(20, 14, 16, 0.9);
+      color: var(--dim);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .syndicate-modal-btn:hover {
+      color: #e8f0e4;
+      border-color: rgba(196, 120, 108, 0.65);
+      background: rgba(36, 24, 28, 0.95);
+    }
+    .syndicate-modal-btn.primary {
+      border-color: rgba(90, 155, 140, 0.55);
+      background: linear-gradient(165deg, rgba(90, 155, 140, 0.35), rgba(61, 120, 108, 0.45));
+      color: #dff5ef;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+    }
+    .syndicate-modal-btn.primary:hover {
+      border-color: rgba(120, 200, 180, 0.65);
+      color: #fff;
+    }
+
+    .feed-item {
+      display: flex; align-items: baseline; gap: 0.5rem;
+      padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.65rem;
+      min-width: 0;
+    }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-ts { color: var(--dim); white-space: nowrap; flex-shrink: 0; font-size: 0.58rem; }
+    .feed-msg { color: #d0ddd0; flex: 1; min-width: 0; word-break: break-word; overflow-wrap: anywhere; }
+    .feed-pts { color: var(--gold); white-space: nowrap; flex-shrink: 0; }
+    .feed-pts.tg { color: var(--teal); font-size: 0.52rem; letter-spacing: 0.08em; }
+
+    #center-top { display: flex; gap: 0.5rem; flex-shrink: 0; min-width: 0; }
+    #center-bottom { flex-shrink: 0; min-width: 0; }
+    #center-mid { flex: 1; }
+    #center-mid.founders-strap {
+      flex: 0 0 auto;
+      margin: 0.15rem 0 0.2rem;
+      text-align: center;
+      font-size: 0.54rem;
+      letter-spacing: 0.08em;
+      line-height: 1.45;
+      color: var(--dim);
+      padding: 0.4rem 0.65rem;
+      border: 1px solid rgba(196, 120, 108, 0.28);
+      border-radius: 8px;
+      background: rgba(6, 18, 12, 0.55);
+      text-transform: none;
+    }
+    #center-mid.founders-strap strong { color: var(--gold2); font-weight: 600; }
+
+    .center-stat {
+      flex: 1; min-width: 0; padding: 0.6rem 0.8rem;
+      background: rgba(6,18,12,0.76);
+      border: 1px solid var(--moss-border);
+      backdrop-filter: blur(8px);
+      text-align: center;
+      position: relative;
+    }
+    .center-stat::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--moss2), transparent);
+      opacity: 0.5;
+    }
+    .center-stat .big-num {
+      font-family: var(--display); font-size: 1.6rem; font-weight: 700;
+      line-height: 1; color: var(--moss2);
+    }
+    .center-stat .big-num.gold { color: var(--gold2); }
+    .center-stat .big-num.cyan { color: var(--teal); }
+    .center-stat .big-num.green { color: var(--moss2); }
+    .center-stat .big-lbl {
+      font-size: 0.52rem; letter-spacing: 0.14em; color: var(--dim);
+      text-transform: uppercase; margin-top: 0.2rem;
+      word-break: break-word;
+    }
+
+    #ticker {
+      height: 28px; overflow: hidden;
+      background: rgba(6,18,12,0.9);
+      border-top: 1px solid var(--moss-border);
+      border-bottom: 1px solid var(--moss-border);
+      display: flex; align-items: center;
+      flex-shrink: 0;
+      min-width: 0;
+    }
+    #ticker-label {
+      padding: 0 0.8rem;
+      font-family: var(--display); font-size: 0.55rem; font-weight: 700;
+      letter-spacing: 0.14em; color: var(--moss2);
+      border-right: 1px solid var(--moss-border);
+      white-space: nowrap;
+    }
+    #ticker-track { flex: 1; min-width: 0; overflow: hidden; position: relative; }
+    #ticker-scroll {
+      white-space: nowrap;
+      font-size: 0.6rem; color: var(--dim); letter-spacing: 0.06em;
+      animation: ticker-scroll 32s linear infinite;
+      display: inline-block; padding-left: 100%;
+    }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* Full-screen step before skybox + HUD (no JWT unless ?demo=1 or session demo). */
+    .passport-auth-gate {
+      position: fixed; inset: 0; z-index: 110;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.25rem;
+      background: radial-gradient(ellipse 120% 80% at 50% 20%, rgba(60,28,32,0.88) 0%, var(--void) 55%);
+      box-shadow: inset 0 0 80px rgba(0,0,0,0.5);
+    }
+    .passport-auth-gate.hidden { display: none !important; }
+    .passport-auth-gate-card {
+      width: 100%; max-width: 360px;
+      background: var(--panel-bg);
+      border: 1px solid var(--moss-border);
+      box-shadow: inset 0 0 22px var(--moss-glow), 0 12px 48px rgba(0,0,0,0.55);
+      padding: 1.35rem 1.25rem 1.1rem;
+      border-radius: 6px;
+    }
+    .passport-auth-gate-card::before {
+      content: '';
+      display: block; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--moss2), transparent);
+      opacity: 0.55; margin: -0.2rem 0 1rem;
+    }
+    .passport-auth-gate-logo {
+      font-family: var(--display); font-size: 1.35rem; font-weight: 700;
+      letter-spacing: 0.16em; color: var(--moss2); text-align: center;
+      text-transform: uppercase;
+    }
+    .passport-auth-gate-sub {
+      font-size: 0.62rem; color: var(--dim); letter-spacing: 0.1em;
+      text-align: center; text-transform: uppercase; line-height: 1.5;
+      margin: 0.5rem 0 1rem;
+    }
+    .passport-auth-gate-card .oasis-auth-wrap { margin-top: 0; border-top: none; padding-top: 0; }
+    .gate-demo-link {
+      display: block; width: 100%; margin-top: 1rem; padding: 0.5rem;
+      font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.06em;
+      color: var(--dim); background: transparent; border: none;
+      cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+    }
+    .gate-demo-link:hover { color: var(--moss2); }
+
+    #loading {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--void);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1.2rem;
+      transition: opacity 0.8s ease;
+    }
+    #loading.fade-out { opacity: 0; pointer-events: none; }
+    .load-logo {
+      font-family: var(--display); font-size: 1.65rem; font-weight: 700;
+      letter-spacing: 0.2em; color: var(--moss2);
+    }
+    .load-sub {
+      font-size: 0.62rem; letter-spacing: 0.18em; color: var(--dim); text-transform: uppercase;
+    }
+    .load-bar-wrap { width: 200px; max-width: 70vw; height: 2px; background: rgba(90,143,90,0.2); }
+    .load-bar { height: 100%; background: var(--moss2); width: 0%; transition: width 0.4s ease; box-shadow: 0 0 8px var(--moss2); }
+    .load-status { font-size: 0.58rem; color: var(--dim); letter-spacing: 0.1em; text-align: center; padding: 0 1rem; }
+
+    #drag-hint {
+      position: fixed; bottom: 36px; left: 50%; transform: translateX(-50%);
+      z-index: 4;
+      font-size: 0.58rem; color: rgba(122,184,122,0.45); letter-spacing: 0.12em;
+      text-transform: uppercase; pointer-events: none;
+      transition: opacity 1s ease;
+    }
+    #drag-hint.hide { opacity: 0; }
+
+    /* Shown when no ?skyboxUrl / ?worldId — points to worldgen-oasis-demo Blockade workflow */
+    .skybox-missing-hint {
+      position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%); z-index: 5;
+      max-width: min(520px, 92vw); padding: 0.75rem 1rem;
+      background: rgba(6,18,12,0.94); border: 1px solid var(--moss-border);
+      font-size: 0.62rem; color: var(--dim); line-height: 1.45;
+      pointer-events: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+    }
+    .skybox-missing-hint strong { color: var(--moss2); }
+    .skybox-missing-hint code { font-size: 0.58rem; color: var(--teal); word-break: break-all; }
+    .skybox-missing-hint.hidden { display: none; }
+    .skybox-missing-hint ol { margin: 0.4rem 0 0 1.1rem; padding: 0; }
+    .skybox-missing-hint .sub { margin-top: 0.45rem; font-size: 0.55rem; opacity: 0.85; }
+
+    @media (max-width: 900px) {
+      #grid { grid-template-columns: minmax(0, 200px) 1fr minmax(0, 185px); }
+    }
+
+    @media (max-width: 640px) {
+      #top-bar {
+        height: 40px; padding: 0 0.75rem; gap: 0.4rem;
+      }
+      .tb-center { display: none; }
+      .tb-sep    { display: none; }
+      .tb-sub    { display: none; }
+      #tb-clock  { display: none; }
+      .tb-logo   { font-size: 0.95rem; letter-spacing: 0.1em; }
+      .tier-badge { font-size: 0.5rem; padding: 0.15rem 0.5rem; }
+
+      #hud { overflow: hidden; }
+
+      #grid {
+        display: block !important;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 0.45rem;
+        height: calc(100% - 40px - 28px);
+      }
+
+      .col {
+        width: 100%;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        margin-bottom: 0.45rem;
+      }
+      .col:last-child { margin-bottom: 0; }
+
+      #col-center { order: 0; }
+      #col-left   { order: 1; }
+      #col-right  { order: 2; }
+
+      #center-mid:not(.founders-strap) { display: none; }
+      #center-bottom { order: 10; }
+
+      #center-top {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.4rem;
+      }
+      .center-stat          { padding: 0.55rem 0.5rem; }
+      .center-stat .big-num { font-size: 1.25rem; }
+      .center-stat .big-lbl { font-size: 0.48rem; }
+
+      #av-wrap {
+        display: flex; align-items: center; gap: 0.75rem;
+        text-align: left; padding-bottom: 0.4rem;
+      }
+      #av-ring      { margin: 0; width: 54px; height: 54px; font-size: 1.1rem; flex-shrink: 0; }
+      #av-ring::after { inset: -3px; }
+      #av-name      { font-size: 0.92rem; }
+      #av-location  { font-size: 0.58rem; }
+      #av-since     { font-size: 0.56rem; }
+
+      .gauge-wrap  { width: 80px; height: 80px; }
+      #karma-svg   { width: 80px; height: 80px; }
+      .gauge-val   { font-size: 0.95rem; }
+
+      .panel      { padding: 0.6rem 0.7rem; }
+      .panel-hdr  { font-size: 0.62rem; padding-bottom: 0.38rem; margin-bottom: 0.38rem; }
+
+      #ticker { height: 24px; }
+      #ticker-label { font-size: 0.48rem; padding: 0 0.6rem; }
+      #ticker-scroll { font-size: 0.55rem; }
+
+      #vignette {
+        background: radial-gradient(ellipse at center,
+          rgba(18,8,10,0.28) 0%,
+          rgba(12,6,8,0.7) 55%,
+          rgba(8,4,6,0.94) 100%
+        );
+      }
+
+      #drag-hint { bottom: 30px; font-size: 0.5rem; }
+    }
+
+    @media (max-width: 380px) {
+      .center-stat .big-num { font-size: 1.05rem; }
+      #av-ring     { width: 46px; height: 46px; font-size: 0.95rem; }
+      .tb-logo     { font-size: 0.85rem; }
+      .tier-badge  { font-size: 0.44rem; }
+      .lbl         { font-size: 8px; }
+      .val         { font-size: 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="load-logo">Hyde End Vineyard</div>
+  <div class="load-sub">Founders Allocation · perpetual access · English vineyard skybox</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
+  <div class="load-status" id="load-status">Loading vineyard room…</div>
+</div>
+
+<div id="passport-auth-gate" class="passport-auth-gate hidden" aria-modal="true" role="dialog" aria-labelledby="passport-gate-title">
+  <div class="passport-auth-gate-card">
+    <h1 id="passport-gate-title" class="passport-auth-gate-logo">Hyde End Vineyard</h1>
+    <p class="passport-auth-gate-sub">Founders passport · Sign in with OASIS to link your Founders record, or try the demo.</p>
+    <div class="oasis-auth-wrap">
+      <form id="gate-auth-form" autocomplete="on">
+        <input type="text" id="gate-auth-user" name="username" autocomplete="username" placeholder="OASIS username" />
+        <input type="password" id="gate-auth-pass" name="password" autocomplete="current-password" placeholder="Password" />
+        <button type="submit" id="gate-auth-submit" class="oasis-auth-btn">Enter passport</button>
+        <p id="gate-auth-msg" class="oasis-auth-msg" aria-live="polite"></p>
+      </form>
+    </div>
+    <button type="button" id="gate-demo-btn" class="gate-demo-link">Continue without signing in (demo)</button>
+    <p style="font-size:0.5rem;color:rgba(232,240,228,0.35);text-align:center;margin-top:0.75rem;letter-spacing:0.06em">Developers: add <code style="color:var(--teal)">?demo=1</code> to skip this screen.</p>
+  </div>
+</div>
+
+<div id="viewport"></div>
+<div id="vignette"></div>
+<div id="scanlines"></div>
+<div id="drag-hint">drag to look around</div>
+
+<div id="skybox-missing-hint" class="skybox-missing-hint hidden" role="status" aria-live="polite">
+  <p><strong>Skybox image failed to load.</strong> This page defaults to a Blockade English-vineyard render; if you see this, check network/CORS or pass a different <code>?skyboxUrl=</code>.</p>
+  <ol>
+    <li>Regenerate: <code>cd worldgen-oasis-demo</code> → <code>python demo_blockade_english_vineyard.py</code></li>
+    <li>Or register in OASIS: <code>?worldId=&lt;guid&gt;&amp;apiUrl=…</code></li>
+  </ol>
+  <p class="sub">Prompt: <code>prompts/english_vineyard_skybox.md</code></p>
+</div>
+
+<div id="hud">
+
+  <div id="top-bar">
+    <div class="tb-section">
+      <span class="tb-logo">Hyde End Vineyard</span>
+      <span class="tb-sep">|</span>
+      <span class="tb-sub">Founders Allocation</span>
+    </div>
+    <div class="tb-center">
+      <div class="status-dot"></div>
+      <span id="tb-system">OASIS · Founders registry</span>
+    </div>
+    <div class="tb-section">
+      <a href="farm-map/map.html" id="tb-farm-map" title="Hyde End &amp; Brimpton ground map">Farm map</a>
+      <button type="button" id="tb-oasis-signin" title="Scroll to OASIS sign-in">OASIS sign-in</button>
+      <span id="tier-display" class="tier-badge seed">Cellar 🍷</span>
+      <span id="tb-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div id="grid">
+
+    <div class="col">
+
+      <div class="panel">
+        <div class="panel-hdr">Identity <span class="panel-hdr-tag" id="forest-id-tag">Founders ref</span></div>
+        <div id="oasis-auth-panel" class="oasis-auth-wrap" style="margin-top:0;border-top:none;padding-top:0">
+          <div class="oa-title">Sign in with OASIS</div>
+          <div id="oasis-auth-signed" style="display:none">
+            <p class="tg-connect-lead" style="margin:0 0 0.4rem">Signed in. Passport and Telegram link use this session.</p>
+            <button type="button" id="oasis-auth-signout" class="oasis-auth-out">Sign out</button>
+          </div>
+          <form id="oasis-auth-form" autocomplete="on">
+            <input type="text" id="oasis-auth-user" name="username" autocomplete="username" placeholder="OASIS username" />
+            <input type="password" id="oasis-auth-pass" name="password" autocomplete="current-password" placeholder="Password" />
+            <button type="submit" id="oasis-auth-submit" class="oasis-auth-btn">Sign in</button>
+            <p id="oasis-auth-msg" class="oasis-auth-msg" aria-live="polite"></p>
+          </form>
+        </div>
+        <div class="divider" style="margin:0.55rem 0"></div>
+        <div id="av-wrap">
+          <div id="av-ring">
+            <span id="av-initials">?</span>
+          </div>
+          <div>
+            <div id="av-name">—</div>
+            <div id="av-location">🍇 Hyde End · 15k vines · 7 acres · quality over quantity</div>
+            <div id="av-since">Member since <span id="member-since">—</span></div>
+          </div>
+        </div>
+        <div class="stat-row"><span class="lbl">Passport ID</span><span class="val mono cyan" id="passport-id">—</span></div>
+        <div class="stat-row"><span class="lbl">Season arc</span><span class="val gold" id="current-chapter">Budbreak</span></div>
+        <div class="stat-row"><span class="lbl">Status</span><span class="val badge green" id="member-status">ACTIVE</span></div>
+        <div class="stat-row"><span class="lbl">Last activity</span><span class="val" id="last-checkin">—</span></div>
+      </div>
+
+      <div class="panel" id="tg-connect-panel" style="display:none">
+        <div class="panel-hdr">Telegram <span class="panel-hdr-tag">Guide bot</span></div>
+        <p id="tg-connect-lead" class="tg-connect-lead"></p>
+        <button type="button" id="tg-connect-btn" class="tg-connect-btn" style="display:none">Open Telegram to connect</button>
+        <p id="tg-connect-status" class="tg-connect-status" aria-live="polite"></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr">Founders standing</div>
+        <div class="stat-row">
+          <span class="lbl">Current tier</span>
+          <span class="val badge seed" id="tier-label">Cellar 🍷</span>
+        </div>
+        <div class="divider"></div>
+        <div class="stat-row" style="margin-bottom:0.3rem">
+          <span class="lbl">Standing to next tier</span>
+          <span class="val gold" id="karma-to-next">—</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-track"><div class="prog-fill" id="tier-bar" style="width:0%"></div></div>
+          <span class="prog-pct" id="tier-pct">0%</span>
+        </div>
+        <div class="stat-row" style="margin-bottom:0.3rem">
+          <span class="lbl">Harvest arc</span>
+          <span class="val cyan" id="chapter-pct">—</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-track"><div class="prog-fill cyan" id="chapter-bar" style="width:0%"></div></div>
+          <span class="prog-pct" id="chapter-bar-pct">0%</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr">Season stamps</div>
+        <div class="stamps-grid" id="stamps"></div>
+      </div>
+
+    </div>
+
+    <div class="col" id="col-center">
+
+      <div id="center-top">
+        <div class="center-stat">
+          <div class="big-num" id="c-trees">—</div>
+          <div class="big-lbl">Founders bottles</div>
+        </div>
+        <div class="center-stat">
+          <div class="big-num gold" id="c-karma">—</div>
+          <div class="big-lbl">Standing score</div>
+        </div>
+        <div class="center-stat">
+          <div class="big-num cyan" id="c-quests">—</div>
+          <div class="big-lbl">Early releases</div>
+        </div>
+        <div class="center-stat">
+          <div class="big-num green" id="c-co2">—</div>
+          <div class="big-lbl">Vintage</div>
+        </div>
+      </div>
+
+      <div id="center-mid" class="founders-strap" aria-label="Founders allocation summary">
+        <strong>Founders pool ~10,000 bottles / yr</strong> of ~15k production · access beats price · full Founders rate from ~<strong>2028</strong>
+      </div>
+
+      <div class="panel" id="center-bottom">
+        <div class="panel-hdr">Recent activity <span class="panel-hdr-tag" id="feed-count">0 events</span><span class="panel-hdr-tag" id="tg-feed-badge" style="display:none;color:var(--teal)"> · Telegram</span></div>
+        <div id="activity-feed">
+          <div class="feed-item">
+            <span class="feed-ts">—</span>
+            <span class="feed-msg">Loading activity log…</span>
+            <span class="feed-pts"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col">
+
+      <div class="panel">
+        <div class="panel-hdr">Founders rights &amp; gifts</div>
+        <div class="gauge-wrap">
+          <svg id="karma-svg" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="40" fill="none"
+              stroke="rgba(139,58,74,0.2)" stroke-width="6"/>
+            <circle cx="48" cy="48" r="40" fill="none"
+              stroke="url(#pvKarmaGrad)" stroke-width="6"
+              stroke-linecap="round"
+              stroke-dasharray="251.2"
+              stroke-dashoffset="251.2"
+              id="karma-arc"
+              transform="rotate(-90 48 48)"/>
+            <defs>
+              <linearGradient id="pvKarmaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#8b3a4a"/>
+                <stop offset="100%" stop-color="#c9a84c"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="gauge-center">
+            <span class="gauge-val" id="karma-val">0</span>
+            <span class="gauge-lbl">standing</span>
+          </div>
+        </div>
+        <div class="stat-row"><span class="lbl">Certificates / NFTs</span><span class="val gold" id="species-count">—</span></div>
+        <div class="stat-row"><span class="lbl">Giftable (transfer)</span><span class="val" id="pgt-hours">—</span></div>
+        <div class="divider"></div>
+        <div class="stat-row"><span class="lbl">Next milestone</span><span class="val gold" id="next-milestone">250 standing → Parcel tier</span></div>
+        <div class="prog-wrap">
+          <div class="prog-track">
+            <div class="prog-fill green" id="milestone-bar" style="width:0%"></div>
+          </div>
+          <span class="prog-pct" id="milestone-pct">0/250</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr">Founders actions</div>
+        <div id="quest-list">
+          <div class="quest-item" data-syndicate-row="claim">
+            <div class="quest-dot active"></div>
+            <div class="quest-item-body min-w-0">
+              <div class="quest-name">Claim bottles at Founders price (20% off release)</div>
+              <div class="quest-meta">Target <strong>12 bottles / yr</strong> per token from full production (~2028) · <span id="q-trees-progress">0 / 12 bottles</span></div>
+              <button type="button" class="quest-action" data-syndicate-action="claim">Claim 1 bottle</button>
+            </div>
+            <div class="quest-reward">+cert</div>
+          </div>
+          <div class="quest-item" data-syndicate-row="gift">
+            <div class="quest-dot"></div>
+            <div class="quest-item-body min-w-0">
+              <div class="quest-name">Transfer or gift your right</div>
+              <div class="quest-meta">Sell · gift · transfer — OASIS wallet / send-nft</div>
+              <button type="button" class="quest-action" data-syndicate-action="gift">How transfer works</button>
+            </div>
+            <div class="quest-reward">+gift</div>
+          </div>
+          <div class="quest-item" data-syndicate-row="preorder">
+            <div class="quest-dot"></div>
+            <div class="quest-item-body min-w-0">
+              <div class="quest-name">Early release or next harvest</div>
+              <div class="quest-meta">Pre-2028 visibility · pre-order window</div>
+              <button type="button" class="quest-action" data-syndicate-action="preorder">Place pre-order</button>
+            </div>
+            <div class="quest-reward">+pre</div>
+          </div>
+          <div class="quest-item" data-syndicate-row="visit">
+            <div class="quest-dot"></div>
+            <div class="quest-item-body min-w-0">
+              <div class="quest-name">Cellar visit / collection day</div>
+              <div class="quest-meta">Formative years journey · log your visit</div>
+              <button type="button" class="quest-action" data-syndicate-action="visit">Log a visit</button>
+            </div>
+            <div class="quest-reward">+stamp</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="ticker">
+    <div id="ticker-label">LIVE</div>
+    <div id="ticker-track">
+      <div id="ticker-scroll">
+        HYDE END FOUNDERS ALLOCATION · £500 ONE-TIME TOKEN · 12 BOTTLES / YEAR AT 20% OFF RELEASE · PERPETUAL RIGHT ·
+        ~10,000 BOTTLES / YEAR RESERVED FOR FOUNDERS · TRANSFERABLE · QUALITY OVER QUANTITY · 15,000 VINES · 7 ACRES ·
+        ACCESS NOT PRICE · OASIS IDENTITY &amp; REGISTRY · ENGLISH VINEYARD SKYBOX
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="syndicate-toast" role="status" aria-live="polite"></div>
+
+<div id="syndicate-modal-scrim" class="syndicate-modal-scrim" aria-hidden="true">
+  <div id="syndicate-modal-card" role="dialog" aria-modal="true" aria-labelledby="syndicate-modal-title">
+    <div class="syndicate-modal-kicker" id="syndicate-modal-kicker">Hyde End · Founders</div>
+    <h2 id="syndicate-modal-title"></h2>
+    <p id="syndicate-modal-sub"></p>
+    <div id="syndicate-modal-body"></div>
+    <div id="syndicate-modal-footer"></div>
+  </div>
+</div>
+
+<!-- Bare "three" specifiers make Vite scan this file and fail (three is not a portals dep). Use full URLs. -->
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const OASIS_API = (window.HYDE_END_OASIS_API_URL || window.VINEYARD_OASIS_API_URL || window.PV_OASIS_API_URL || 'https://api.oasisweb4.com').replace(/\/$/, '');
+const JWT_KEY = 'hyde_end_vineyard_jwt';
+/** sessionStorage: user chose “demo” on the pre-passport gate (cleared on OASIS sign-out). */
+const DEMO_SESSION_KEY = 'hyde_end_passport_demo';
+/** Optional default Guide Telegram bridge origin (same host as guide-telegram-bridge). */
+const PV_GUIDE_BRIDGE_DEFAULT = typeof window !== 'undefined' && window.PV_GUIDE_BRIDGE_URL
+  ? String(window.PV_GUIDE_BRIDGE_URL).replace(/\/$/, '')
+  : '';
+
+/**
+ * Shipped default: English vineyard equirectangular from Blockade (Hyde End prompt run).
+ * Override: ?skyboxUrl=, window.HYDE_END_SKYBOX_URL, or worldgen-oasis-demo/demo_blockade_english_vineyard.py for a new render.
+ */
+const SHIPPED_BLOCKADE_ENGLISH_VINEYARD_SKYBOX =
+  'https://images.blockadelabs.com/images/imagine/M3_Photoreal_equirectangular-jpg_Rolling_English_vineyard_chalk_4084715197_15144863.jpg?ver=1';
+
+const DEFAULT_HYDE_END_SKYBOX = (() => {
+  if (typeof window !== 'undefined') {
+    const w = String(window.HYDE_END_SKYBOX_URL || window.VINEYARD_SKYBOX_URL || '').trim();
+    if (w) return w;
+  }
+  return SHIPPED_BLOCKADE_ENGLISH_VINEYARD_SKYBOX;
+})();
+
+/** Merge query string + hash (hash wins on duplicate keys) — same idea as skybox-world-viewer.html */
+function getPageParams() {
+  const search = window.location.search.slice(1);
+  const hash = window.location.hash.replace(/^#/, '');
+  const hashQuery = hash.includes('?') ? hash.split('?').pop() : hash;
+  const merged = new URLSearchParams(search);
+  const fromHash = new URLSearchParams(hashQuery);
+  for (const [k, v] of fromHash.entries()) merged.set(k, v);
+  return merged;
+}
+
+const params = getPageParams();
+const urlAvatarId = params.get('avatarId') || params.get('id') || null;
+
+/**
+ * Partner API (BFF): `?partnerApi=` / `window.HYDE_END_PARTNER_API_URL`, or on local dev
+ * default `http://127.0.0.1:8788` so actions work without remembering query params.
+ */
+function partnerApiBase() {
+  const q = params.get('partnerApi') || params.get('partner_api');
+  if (q) return String(q).replace(/\/$/, '');
+  if (typeof window !== 'undefined' && window.HYDE_END_PARTNER_API_URL)
+    return String(window.HYDE_END_PARTNER_API_URL).replace(/\/$/, '');
+  const host = typeof window !== 'undefined' ? String(window.location.hostname || '') : '';
+  if (host === 'localhost' || host === '127.0.0.1')
+    return 'http://127.0.0.1:8788';
+  /* Vercel: Partner API is served under /api (see api/index.ts). */
+  if (host.endsWith('.vercel.app'))
+    return String(window.location.origin).replace(/\/$/, '') + '/api';
+  return '';
+}
+
+const CHAPTER_NAMES = [
+  { key: 'budbreak', label: 'Budbreak' },
+  { key: 'veraison', label: 'Veraison' },
+  { key: 'harvest', label: 'Harvest' },
+  { key: 'barrel', label: 'Barrel' },
+  { key: 'bottle', label: 'Bottle' },
+  { key: 'release', label: 'Release' },
+];
+
+const TIERS = [
+  { id: 'seed', label: 'Cellar 🍷', min: 0, next: 250 },
+  { id: 'root', label: 'Parcel 🌿', min: 250, next: 600 },
+  { id: 'flower', label: 'Row 🍇', min: 600, next: 1200 },
+  { id: 'storm', label: 'Block ⛅', min: 1200, next: 2500 },
+  { id: 'guardian', label: 'Estate 🏡', min: 2500, next: 5000 },
+  { id: 'custodian', label: 'Founder ✨', min: 5000, next: null },
+];
+
+const loadBar = document.getElementById('load-bar');
+const loadStatus = document.getElementById('load-status');
+function setLoad(pct, msg) {
+  loadBar.style.width = pct + '%';
+  if (msg) loadStatus.textContent = msg;
+}
+
+function tickClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const el = document.getElementById('tb-clock');
+  if (el) el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/** Last rendered passport; Telegram poll merges into activity feed. */
+let lastPassport = null;
+let lastTelegramMessages = [];
+
+function parseOasisActivitySortTs(ts, idx) {
+  if (!ts || ts === 'now') return Date.now() - idx;
+  const t = Date.parse(ts);
+  if (!Number.isNaN(t)) return t;
+  return Date.now() - (idx + 1) * 3600000;
+}
+
+function mergeActivityForFeed(oasisActivity, tgMessages) {
+  const rows = [];
+  (oasisActivity || []).forEach((ev, i) => {
+    rows.push({
+      sort: parseOasisActivitySortTs(ev.ts, i),
+      tsLabel: ev.ts,
+      msg: ev.msg,
+      pts: ev.pts || '',
+      channel: 'oasis',
+    });
+  });
+  (tgMessages || []).forEach((m) => {
+    const d = new Date(m.ts);
+    const sort = Number.isNaN(d.getTime()) ? 0 : d.getTime();
+    const tsLabel = Number.isNaN(d.getTime())
+      ? '—'
+      : d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const prefix = m.direction === 'out' ? 'Guide · ' : '';
+    rows.push({
+      sort,
+      tsLabel,
+      msg: prefix + m.text,
+      pts: 'TG',
+      channel: 'telegram',
+    });
+  });
+  rows.sort((a, b) => b.sort - a.sort);
+  return rows;
+}
+
+function renderActivityFeed(p, tgMessages) {
+  const merged = mergeActivityForFeed(p?.activity || [], tgMessages);
+  const feedEl = document.getElementById('activity-feed');
+  feedEl.innerHTML = '';
+  if (merged.length === 0) {
+    const div = document.createElement('div');
+    div.className = 'feed-item';
+    const msg = document.createElement('span');
+    msg.className = 'feed-msg';
+    msg.style.color = 'var(--dim)';
+    msg.textContent =
+      'No activity yet. Use Founders actions on the right, or sign in with OASIS and connect the Guide bridge (?bridge=) so Telegram (linked via ChatBridge) appears here.';
+    div.appendChild(msg);
+    feedEl.appendChild(div);
+  } else {
+    merged.forEach((row) => {
+      const div = document.createElement('div');
+      div.className = 'feed-item';
+      const ts = document.createElement('span');
+      ts.className = 'feed-ts';
+      ts.textContent = row.tsLabel;
+      const msg = document.createElement('span');
+      msg.className = 'feed-msg';
+      msg.textContent = row.msg;
+      const pts = document.createElement('span');
+      pts.className = row.channel === 'telegram' ? 'feed-pts tg' : 'feed-pts';
+      pts.textContent = row.pts || '';
+      div.appendChild(ts);
+      div.appendChild(msg);
+      div.appendChild(pts);
+      feedEl.appendChild(div);
+    });
+  }
+  document.getElementById('feed-count').textContent = `${merged.length} events`;
+}
+
+/** Avatar-linked feed: bridge validates JWT against OASIS and returns Telegram log for that avatar. */
+async function fetchTelegramMessagesMe(bridgeBase, oasisJwt) {
+  const url = `${bridgeBase.replace(/\/$/, '')}/api/messages/me`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${oasisJwt}` } });
+  if (!res.ok) return null;
+  const j = await res.json().catch(() => ({}));
+  return Array.isArray(j.messages) ? j.messages : [];
+}
+
+async function fetchTelegramMessages(chatId, bridgeBase, token) {
+  const url = `${bridgeBase.replace(/\/$/, '')}/api/messages/${encodeURIComponent(chatId)}`;
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) return null;
+  const j = await res.json().catch(() => ({}));
+  return Array.isArray(j.messages) ? j.messages : [];
+}
+
+function wireTelegramFeed() {
+  const jwt = readJwt();
+  const tgParam = params.get('tg');
+  const bridgeParam = (params.get('bridge') || '').trim();
+  const btokenParam = (params.get('btoken') || '').trim();
+  try {
+    if (tgParam) localStorage.setItem('hyde_end_guide_tg', tgParam);
+    if (bridgeParam) localStorage.setItem('hyde_end_guide_bridge', bridgeParam);
+    if (btokenParam) localStorage.setItem('hyde_end_guide_btoken', btokenParam);
+  } catch {
+    /* ignore */
+  }
+  let chatId = tgParam;
+  let bridge = bridgeParam || PV_GUIDE_BRIDGE_DEFAULT;
+  let btoken = btokenParam;
+  try {
+    if (!chatId) chatId = localStorage.getItem('hyde_end_guide_tg');
+    if (!bridge) bridge = localStorage.getItem('hyde_end_guide_bridge') || '';
+    if (!btoken) btoken = localStorage.getItem('hyde_end_guide_btoken') || '';
+  } catch {
+    /* ignore */
+  }
+
+  const badge = document.getElementById('tg-feed-badge');
+
+  function startPolling(tick) {
+    tick();
+    setInterval(tick, 12000);
+  }
+
+  if (jwt && bridge) {
+    if (badge) badge.style.display = 'inline';
+    startPolling(async () => {
+      const list = await fetchTelegramMessagesMe(bridge, jwt);
+      if (list == null) return;
+      lastTelegramMessages = list;
+      if (lastPassport) renderActivityFeed(lastPassport, lastTelegramMessages);
+    });
+    return;
+  }
+
+  if (!chatId || !bridge) {
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+  if (badge) badge.style.display = 'inline';
+  startPolling(async () => {
+    const list = await fetchTelegramMessages(chatId, bridge, btoken);
+    if (list == null) return;
+    lastTelegramMessages = list;
+    if (lastPassport) renderActivityFeed(lastPassport, lastTelegramMessages);
+  });
+}
+
+function getStoredBridgeBase() {
+  try {
+    return (
+      (params.get('bridge') || PV_GUIDE_BRIDGE_DEFAULT || localStorage.getItem('hyde_end_guide_bridge') || '')
+        .trim()
+        .replace(/\/$/, '')
+    );
+  } catch {
+    return (params.get('bridge') || PV_GUIDE_BRIDGE_DEFAULT || '').trim().replace(/\/$/, '');
+  }
+}
+
+/** One-tap Telegram ↔ OASIS link (no numeric id, no manual ONODE POST). */
+function setupTelegramConnectUI() {
+  const panel = document.getElementById('tg-connect-panel');
+  const btn = document.getElementById('tg-connect-btn');
+  const lead = document.getElementById('tg-connect-lead');
+  const st = document.getElementById('tg-connect-status');
+  if (!panel || !btn || !lead || !st) return;
+
+  const bridge = getStoredBridgeBase();
+  if (!bridge) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+
+  const jwt = readJwt();
+  if (!jwt) {
+    panel.dataset.linked = '0';
+    lead.textContent =
+      'Sign in with OASIS on this device, then the button appears — one tap opens Telegram to finish linking (no IDs to copy).';
+    btn.style.display = 'none';
+    st.textContent = '';
+    return;
+  }
+
+  function applyLinkedUi(botUsername) {
+    panel.dataset.linked = '1';
+    lead.textContent =
+      'Guide bot is linked to this OASIS account. Telegram lines appear in Recent activity below (~12s). Send from the operator dashboard to test end-to-end.';
+    btn.textContent = botUsername ? `Open @${botUsername} in Telegram` : 'Open bot in Telegram';
+    btn.style.display = '';
+    st.textContent = '';
+  }
+
+  function applyNeedsLinkUi() {
+    panel.dataset.linked = '0';
+    lead.textContent =
+      'Tap the button — we open Telegram with a secure link. Press Start there once to attach this passport (or fix bridge URL / sign-in if this stays stuck).';
+    btn.textContent = 'Connect Telegram';
+    btn.style.display = '';
+    st.textContent = '';
+  }
+
+  applyNeedsLinkUi();
+
+  btn.onclick = async () => {
+    if (panel.dataset.linked === '1') {
+      try {
+        const h = await fetch(`${bridge.replace(/\/$/, '')}/health`).then((r) => r.json()).catch(() => ({}));
+        const u = (h.botUsername || '').replace(/^@/, '');
+        if (u) window.open(`https://t.me/${u}`, '_blank', 'noopener,noreferrer');
+        else window.open('https://t.me/', '_blank', 'noopener,noreferrer');
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    st.textContent = 'Opening…';
+    btn.disabled = true;
+    try {
+      const res = await fetch(`${bridge}/api/link/telegram-start`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        st.textContent = j.error || `Could not start link (${res.status})`;
+        btn.disabled = false;
+        return;
+      }
+      if (j.openUrl) window.open(j.openUrl, '_blank', 'noopener,noreferrer');
+      st.textContent = 'In Telegram, press Start. Then return here — activity updates within ~12s.';
+    } catch (e) {
+      st.textContent = e?.message || 'Network error';
+    }
+    btn.disabled = false;
+  };
+
+  (async () => {
+    try {
+      const res = await fetch(`${bridge.replace(/\/$/, '')}/api/messages/me`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) return;
+      const h = await fetch(`${bridge.replace(/\/$/, '')}/health`).then((r) => r.json()).catch(() => ({}));
+      applyLinkedUi(h.botUsername || '');
+    } catch {
+      /* keep needs-link UI */
+    }
+  })();
+}
+
+function readJwt() {
+  try {
+    return localStorage.getItem(JWT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function jwtFromAuthJson(authJson) {
+  const result = authJson?.result ?? authJson?.Result ?? authJson;
+  const inner = result?.result ?? result?.Result ?? result;
+  const t = inner?.jwtToken ?? inner?.JwtToken;
+  return typeof t === 'string' && t.length > 20 ? t : null;
+}
+
+async function requestOasisJwt(username, password) {
+  const authRes = await fetch(`${OASIS_API}/api/avatar/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  const authJson = await authRes.json().catch(() => ({}));
+  if (!authRes.ok) {
+    throw new Error(authJson.message || `Sign-in failed (${authRes.status})`);
+  }
+  const token = jwtFromAuthJson(authJson);
+  if (!token) throw new Error('No token in response.');
+  return token;
+}
+
+function shouldSkipAuthGate() {
+  if (readJwt()) return true;
+  const d = (params.get('demo') || '').toLowerCase();
+  if (d === '1' || d === 'true' || d === 'yes') return true;
+  try {
+    if (sessionStorage.getItem(DEMO_SESSION_KEY) === '1') return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+function showPassportAuthGate() {
+  const gate = document.getElementById('passport-auth-gate');
+  const loading = document.getElementById('loading');
+  if (loading) loading.style.display = 'none';
+  if (gate) {
+    gate.classList.remove('hidden');
+    setTimeout(() => document.getElementById('gate-auth-user')?.focus(), 80);
+  }
+}
+
+function hidePassportAuthGate() {
+  document.getElementById('passport-auth-gate')?.classList.add('hidden');
+}
+
+/** Pre-passport full-screen login; on demo, continues without JWT (session flag). */
+function setupPassportAuthGate(onDemoContinue) {
+  const form = document.getElementById('gate-auth-form');
+  const msg = document.getElementById('gate-auth-msg');
+  const submit = document.getElementById('gate-auth-submit');
+  const userEl = document.getElementById('gate-auth-user');
+  const passEl = document.getElementById('gate-auth-pass');
+  const demoBtn = document.getElementById('gate-demo-btn');
+  if (!form || !submit || !demoBtn) return;
+
+  demoBtn.addEventListener('click', () => {
+    try {
+      sessionStorage.setItem(DEMO_SESSION_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    onDemoContinue();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    msg.classList.remove('err');
+    const username = (userEl?.value || '').trim();
+    const password = passEl?.value || '';
+    if (!username || !password) {
+      msg.classList.add('err');
+      msg.textContent = 'Enter username and password.';
+      return;
+    }
+    submit.disabled = true;
+    msg.textContent = 'Signing in…';
+    try {
+      const token = await requestOasisJwt(username, password);
+      try {
+        localStorage.setItem(JWT_KEY, token);
+      } catch {
+        msg.classList.add('err');
+        msg.textContent = 'Could not save session.';
+        submit.disabled = false;
+        return;
+      }
+      window.location.reload();
+    } catch (err) {
+      msg.classList.add('err');
+      msg.textContent = err?.message || 'Network error';
+      submit.disabled = false;
+    }
+  });
+}
+
+/** Identity panel: sign in stores JWT in localStorage so passport + Telegram bridge use the same session. */
+function setupOasisAuthUI() {
+  const form = document.getElementById('oasis-auth-form');
+  const signed = document.getElementById('oasis-auth-signed');
+  const msg = document.getElementById('oasis-auth-msg');
+  const submit = document.getElementById('oasis-auth-submit');
+  const userEl = document.getElementById('oasis-auth-user');
+  const passEl = document.getElementById('oasis-auth-pass');
+  const signOut = document.getElementById('oasis-auth-signout');
+  const tbSignin = document.getElementById('tb-oasis-signin');
+  const panelEl = document.getElementById('oasis-auth-panel');
+  if (!form || !signed || !submit || !signOut) return;
+
+  const jwt = readJwt();
+  if (jwt) {
+    signed.style.display = '';
+    form.style.display = 'none';
+    if (tbSignin) tbSignin.classList.add('hidden');
+  } else {
+    signed.style.display = 'none';
+    form.style.display = '';
+    if (tbSignin) tbSignin.classList.remove('hidden');
+  }
+
+  if (tbSignin && panelEl) {
+    tbSignin.addEventListener('click', () => {
+      panelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      const u = document.getElementById('oasis-auth-user');
+      if (u && form.style.display !== 'none') u.focus();
+    });
+  }
+
+  signOut.onclick = () => {
+    try {
+      localStorage.removeItem(JWT_KEY);
+      sessionStorage.removeItem(DEMO_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
+    window.location.reload();
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg.textContent = '';
+    msg.classList.remove('err');
+    const username = (userEl?.value || '').trim();
+    const password = passEl?.value || '';
+    if (!username || !password) {
+      msg.classList.add('err');
+      msg.textContent = 'Enter username and password.';
+      return;
+    }
+    submit.disabled = true;
+    msg.textContent = 'Signing in…';
+    try {
+      const token = await requestOasisJwt(username, password);
+      try {
+        localStorage.setItem(JWT_KEY, token);
+      } catch {
+        msg.classList.add('err');
+        msg.textContent = 'Could not save session.';
+        submit.disabled = false;
+        return;
+      }
+      window.location.reload();
+    } catch (err) {
+      msg.classList.add('err');
+      msg.textContent = err?.message || 'Network error';
+      submit.disabled = false;
+    }
+  });
+}
+
+/**
+ * Blockade / OASIS skybox workflow (worldgen-oasis-demo):
+ * - ?skyboxUrl= Blockade file_url (equirectangular JPG from demo_blockade_english_vineyard.py)
+ * - ?worldId= + ?apiUrl= → GET load-holon → metaData.sceneAssetUrl
+ * - JWT: localStorage hyde_end_vineyard_jwt or ?username=&password= in query/hash
+ */
+async function resolveSkyboxImageUrl() {
+  const direct = (params.get('skyboxUrl') || window.HYDE_END_SKYBOX_URL || window.VINEYARD_SKYBOX_URL || window.PV_SKYBOX_URL || '').trim();
+  if (direct) return direct;
+
+  const worldId = params.get('worldId');
+  if (!worldId) return DEFAULT_HYDE_END_SKYBOX;
+
+  const apiUrl = (params.get('apiUrl') || OASIS_API).replace(/\/$/, '');
+  let token = readJwt();
+  const username = params.get('username');
+  const password = params.get('password');
+
+  if (!token && username && password) {
+    const authRes = await fetch(`${apiUrl}/api/avatar/authenticate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const authJson = await authRes.json().catch(() => ({}));
+    if (!authRes.ok) {
+      throw new Error(authJson.message || `OASIS auth failed: ${authRes.status}`);
+    }
+    token = jwtFromAuthJson(authJson);
+    if (!token) throw new Error('No JWT in authenticate response');
+  }
+
+  const opts = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  const loadRes = await fetch(`${apiUrl}/api/data/load-holon/${encodeURIComponent(worldId)}`, opts);
+  const loadJson = await loadRes.json().catch(() => ({}));
+  if (!loadRes.ok) {
+    throw new Error(loadJson.message || `load-holon failed: ${loadRes.status}`);
+  }
+  if (loadJson?.isError) {
+    throw new Error(loadJson?.message || 'Load holon error');
+  }
+
+  const holon = loadJson?.result ?? loadJson?.Result ?? loadJson;
+  const meta = holon?.metaData ?? holon?.MetaData ?? {};
+  const url = meta?.sceneAssetUrl ?? meta?.SceneAssetUrl ?? '';
+  if (url) return String(url);
+  return DEFAULT_HYDE_END_SKYBOX;
+}
+
+async function unwrapOasis(res) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || res.statusText);
+  const inner = data.result?.result ?? data.result ?? data;
+  return inner;
+}
+
+/**
+ * Map OASIS avatar detail + optional metadata into HUD passport shape.
+ * Trees / species / CO₂ stay demo defaults unless metadata provides them.
+ */
+function mapOasisDetail(detail, trees, species, co2, questsDone, stamps, activity) {
+  if (!detail || typeof detail !== 'object') return null;
+  const id = detail.id || detail.avatarId || '';
+  const first = detail.firstName || detail.FirstName || '';
+  const last = detail.lastName || detail.LastName || '';
+  const name = `${first} ${last}`.trim() || detail.username || detail.Username || 'Guardian';
+  const karma = Number(detail.karma ?? detail.Karma ?? 0) || 0;
+  const rawMeta = detail.metadata ?? detail.Metadata ?? detail.metaData;
+  const meta = rawMeta && typeof rawMeta === 'object' ? rawMeta : {};
+
+  let tier = (meta.wineSyndicateTier || meta.syndicateTier || meta.pulmonTier || meta.pvTier || detail.pulmonTier || '').toString().toLowerCase();
+  if (!TIERS.some(t => t.id === tier)) tier = tierFromKarma(karma);
+
+  const bottles = Number(meta.bottlesReserved ?? meta.wineBottlesReserved ?? trees) || 0;
+  const certs = Number(meta.certificatesHeld ?? meta.speciesDocumented ?? species) || 0;
+  const giftable = meta.giftableCertificates ?? meta.giftableBottles ?? null;
+  const vintage = (meta.vintageYear ?? meta.wineVintage ?? meta.vintageLabel ?? '').toString() || null;
+
+  return {
+    name,
+    avatarId: id,
+    forestId: meta.syndicateId || meta.parcelId || meta.forestId || meta.forestID || meta.foundersRef || `HYDE-${(id || 'DEMO').slice(0, 6).toUpperCase()}`,
+    memberSince: (detail.createdDate || meta.memberSince || '—').toString().slice(0, 10),
+    lastCheckin: meta.lastActivity || activity[0]?.msg?.slice(0, 32) || '—',
+    tier,
+    karma,
+    treesRegistered: bottles,
+    speciesDocumented: certs,
+    co2Annual: Number(meta.co2Annual ?? meta.co2_t_per_year ?? co2) || 0,
+    vintageLabel: vintage,
+    giftableCount: giftable != null ? Number(giftable) : null,
+    pgtHours: Number(meta.pgtHours ?? meta.pgt_hours) || null,
+    questsDone: Number(meta.preorderCount ?? meta.questsDone ?? questsDone) || 0,
+    stamps: stamps.length ? stamps : ['budbreak'],
+    activity,
+    source: 'oasis',
+  };
+}
+
+function tierFromKarma(k) {
+  for (let i = TIERS.length - 1; i >= 0; i--) {
+    if (k >= TIERS[i].min) return TIERS[i].id;
+  }
+  return 'seed';
+}
+
+async function fetchOasisPassport() {
+  const jwt = readJwt();
+  if (!jwt) return null;
+
+  const headers = { Authorization: `Bearer ${jwt}` };
+
+  try {
+    let detail = null;
+    let id = urlAvatarId;
+
+    if (id) {
+      const res = await fetch(`${OASIS_API}/api/avatar/get-avatar-detail-by-id/${encodeURIComponent(id)}`, { headers });
+      detail = await unwrapOasis(res);
+    } else {
+      const res = await fetch(`${OASIS_API}/api/avatar/get-logged-in-avatar`, { headers });
+      const logged = await unwrapOasis(res);
+      id = logged?.id || logged?.avatarId || logged?.Id;
+      if (!id) detail = logged;
+      else {
+        const res2 = await fetch(`${OASIS_API}/api/avatar/get-avatar-detail-by-id/${encodeURIComponent(id)}`, { headers });
+        detail = await unwrapOasis(res2);
+      }
+    }
+
+    const activity = [
+      { ts: 'now', msg: 'Passport synced from OASIS', pts: '' },
+    ];
+
+    return mapOasisDetail(detail, 0, 0, 0, 0, [], activity);
+  } catch (e) {
+    console.warn('Hyde End Vineyard passport: OASIS fetch failed', e);
+    return null;
+  }
+}
+
+/**
+ * When Partner API is configured, `/v1/syndicate/me` merges OASIS avatar + registry holons.
+ * Headers: `X-Partner-Id` from `?partnerId=` or `window.HYDE_END_PARTNER_ID`.
+ */
+async function fetchPartnerPassport() {
+  const base = partnerApiBase();
+  const jwt = readJwt();
+  if (!base || !jwt) return null;
+  const partnerId = params.get('partnerId') || (typeof window !== 'undefined' && window.HYDE_END_PARTNER_ID
+    ? String(window.HYDE_END_PARTNER_ID)
+    : '');
+  const headers = { Authorization: `Bearer ${jwt}` };
+  if (partnerId) headers['X-Partner-Id'] = partnerId;
+  try {
+    const res = await fetch(`${base}/v1/syndicate/me`, { headers, cache: 'no-store' });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      console.warn('Hyde End Partner API /v1/syndicate/me', res.status, t.slice(0, 240));
+      return null;
+    }
+    const j = await res.json();
+    return j.passport || null;
+  } catch (e) {
+    console.warn('Hyde End Partner API unreachable', e);
+    return null;
+  }
+}
+
+function syndicatePartnerAuthHeaders() {
+  const jwt = readJwt();
+  const partnerId = params.get('partnerId') || (typeof window !== 'undefined' && window.HYDE_END_PARTNER_ID
+    ? String(window.HYDE_END_PARTNER_ID)
+    : '');
+  const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` };
+  if (partnerId) headers['X-Partner-Id'] = partnerId;
+  return { jwt, headers };
+}
+
+let syndicateToastTimer = null;
+function showSyndicateToast(msg, isErr) {
+  const el = document.getElementById('syndicate-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.toggle('err', !!isErr);
+  el.classList.add('show');
+  if (syndicateToastTimer) clearTimeout(syndicateToastTimer);
+  syndicateToastTimer = setTimeout(() => { el.classList.remove('show'); }, 4500);
+}
+
+/** Styled in-page modal — replaces `confirm` / `prompt` for syndicate actions */
+let syndicateModalResolve = null;
+
+function syndicateModalClose(value) {
+  const scrim = document.getElementById('syndicate-modal-scrim');
+  if (scrim) {
+    scrim.classList.remove('open');
+    scrim.setAttribute('aria-hidden', 'true');
+  }
+  document.body.style.overflow = '';
+  const r = syndicateModalResolve;
+  syndicateModalResolve = null;
+  if (r) r(value);
+}
+
+/**
+ * @param {{ title: string, subtitle?: string, kicker?: string, bodyHtml?: string, buildFooter?: (foot: HTMLElement) => void }} opts
+ */
+function syndicateModalShow(opts) {
+  return new Promise((resolve) => {
+    syndicateModalResolve = resolve;
+    const scrim = document.getElementById('syndicate-modal-scrim');
+    const body = document.getElementById('syndicate-modal-body');
+    const foot = document.getElementById('syndicate-modal-footer');
+    const kick = document.getElementById('syndicate-modal-kicker');
+    if (kick) kick.textContent = opts.kicker || 'Hyde End · Founders';
+    document.getElementById('syndicate-modal-title').textContent = opts.title;
+    const sub = document.getElementById('syndicate-modal-sub');
+    sub.textContent = opts.subtitle || '';
+    sub.style.display = opts.subtitle ? 'block' : 'none';
+    body.innerHTML = opts.bodyHtml || '';
+    body.style.display = body.innerHTML.trim() ? 'block' : 'none';
+    foot.innerHTML = '';
+    if (typeof opts.buildFooter === 'function') opts.buildFooter(foot);
+    scrim.classList.add('open');
+    scrim.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+      const inp = body.querySelector('input, textarea');
+      if (inp) inp.focus();
+      else foot.querySelector('button')?.focus();
+    });
+  });
+}
+
+function wireSyndicateModalOnce() {
+  const scrim = document.getElementById('syndicate-modal-scrim');
+  const card = document.getElementById('syndicate-modal-card');
+  if (!scrim || scrim.dataset.wired === '1') return;
+  scrim.dataset.wired = '1';
+  scrim.addEventListener('click', (e) => {
+    if (e.target === scrim) syndicateModalClose(null);
+  });
+  card.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!scrim.classList.contains('open')) return;
+    syndicateModalClose(null);
+  });
+}
+
+function syndicateModalConfirmClaim() {
+  wireSyndicateModalOnce();
+  return syndicateModalShow({
+    title: 'Claim one bottle',
+    subtitle: 'Founders allocation · 20% off release',
+    bodyHtml: '<p class="syndicate-modal-p">Record a claim for <strong>one bottle</strong> against your Founders allocation (target <strong>12 bottles / year</strong> at Founders price from full production, expected ~2028). Minting the NFT certificate on-chain is a separate step in OASIS.</p>',
+    buildFooter(foot) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'syndicate-modal-btn';
+      cancel.textContent = 'Cancel';
+      cancel.onclick = () => syndicateModalClose(false);
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'syndicate-modal-btn primary';
+      ok.textContent = 'Confirm claim';
+      ok.onclick = () => syndicateModalClose(true);
+      foot.appendChild(cancel);
+      foot.appendChild(ok);
+    },
+  });
+}
+
+function syndicateModalPreorder() {
+  wireSyndicateModalOnce();
+  const defY = String(new Date().getFullYear() + 1);
+  return syndicateModalShow({
+    title: 'Pre-order next harvest',
+    subtitle: 'Early releases · formative years',
+    bodyHtml: `
+      <label class="syndicate-modal-label" for="syndicate-in-qty">Number of bottles</label>
+      <input type="number" class="syndicate-modal-input" id="syndicate-in-qty" min="1" value="6" inputmode="numeric" />
+      <label class="syndicate-modal-label" for="syndicate-in-year">Target vintage <span class="syndicate-modal-hint">(optional)</span></label>
+      <input type="number" class="syndicate-modal-input" id="syndicate-in-year" placeholder="${defY}" inputmode="numeric" />
+    `,
+    buildFooter(foot) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'syndicate-modal-btn';
+      cancel.textContent = 'Cancel';
+      cancel.onclick = () => syndicateModalClose(null);
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'syndicate-modal-btn primary';
+      ok.textContent = 'Place pre-order';
+      ok.onclick = () => {
+        const qty = Math.max(1, parseInt(String(document.getElementById('syndicate-in-qty').value).trim(), 10) || 0);
+        if (!qty) {
+          showSyndicateToast('Enter a valid number of bottles.', true);
+          return;
+        }
+        const yRaw = String(document.getElementById('syndicate-in-year').value).trim();
+        const ty = yRaw ? parseInt(yRaw, 10) : NaN;
+        const out = { qty };
+        if (Number.isFinite(ty)) out.targetVintageYear = ty;
+        syndicateModalClose(out);
+      };
+      foot.appendChild(cancel);
+      foot.appendChild(ok);
+      const onEnter = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          ok.click();
+        }
+      };
+      document.getElementById('syndicate-in-qty')?.addEventListener('keydown', onEnter);
+      document.getElementById('syndicate-in-year')?.addEventListener('keydown', onEnter);
+    },
+  });
+}
+
+function syndicateModalVisit() {
+  wireSyndicateModalOnce();
+  return syndicateModalShow({
+    title: 'Log a visit',
+    subtitle: 'Cellar · collection day',
+    bodyHtml: `
+      <p class="syndicate-modal-p" style="margin-bottom:0.65rem">Add a short note for your <strong>Founders</strong> record (pickup, tasting, tour).</p>
+      <label class="syndicate-modal-label" for="syndicate-in-note">Note</label>
+      <textarea class="syndicate-modal-textarea" id="syndicate-in-note" placeholder="Cellar / collection day"></textarea>
+    `,
+    buildFooter(foot) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'syndicate-modal-btn';
+      cancel.textContent = 'Cancel';
+      cancel.onclick = () => syndicateModalClose(null);
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'syndicate-modal-btn primary';
+      ok.textContent = 'Save visit';
+      ok.onclick = () => {
+        const note = String(document.getElementById('syndicate-in-note').value || '').trim();
+        syndicateModalClose({ note });
+      };
+      foot.appendChild(cancel);
+      foot.appendChild(ok);
+    },
+  });
+}
+
+function syndicateModalGiftInfo() {
+  wireSyndicateModalOnce();
+  return syndicateModalShow({
+    title: 'Transfer or gift',
+    subtitle: 'Founders token · wallet · OASIS',
+    bodyHtml: '<p class="syndicate-modal-p">Your Founders position is <strong>transferable</strong> (sell, gift, or assign). For bottle certificates, use <strong>send-nft</strong> from your OASIS-linked wallet, or ask the cellar. One-tap transfer from this passport is on the roadmap.</p>',
+    buildFooter(foot) {
+      const ok = document.createElement('button');
+      ok.type = 'button';
+      ok.className = 'syndicate-modal-btn primary';
+      ok.textContent = 'Got it';
+      ok.onclick = () => syndicateModalClose(true);
+      foot.appendChild(ok);
+    },
+  });
+}
+
+async function partnerPost(path, body) {
+  const base = partnerApiBase();
+  const { jwt, headers } = syndicatePartnerAuthHeaders();
+  if (!base || !jwt) throw new Error('Sign in with OASIS and add ?partnerApi= (Partner API URL) to use actions.');
+  const res = await fetch(`${base.replace(/\/$/, '')}${path}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body || {}),
+    cache: 'no-store',
+  });
+  const text = await res.text().catch(() => '');
+  let json = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* not JSON */
+  }
+  if (!res.ok) throw new Error((json && json.error) || text.slice(0, 220) || `HTTP ${res.status}`);
+  return json;
+}
+
+async function refreshPassportAfterSyndicateAction() {
+  let p = await fetchPartnerPassport();
+  if (!p) p = await fetchOasisPassport();
+  if (!p) p = lastPassport || mockPassport();
+  renderPassport(p);
+}
+
+function syndicatePartnerLive() {
+  return !!(partnerApiBase() && readJwt());
+}
+
+function updateSyndicateActionButtons(p) {
+  const list = document.getElementById('quest-list');
+  if (!list) return;
+  const live = syndicatePartnerLive();
+  const s = p?.partner?.summary;
+  list.querySelectorAll('[data-syndicate-action]').forEach((btn) => {
+    const action = btn.getAttribute('data-syndicate-action');
+    if (!live) {
+      btn.disabled = true;
+      btn.title = !readJwt()
+        ? 'Sign in with OASIS'
+        : 'Set Partner API URL (?partnerApi= or window.HYDE_END_PARTNER_API_URL). On localhost we default to http://127.0.0.1:8788 — start the partner-api server.';
+      return;
+    }
+    /* Allow actions whenever JWT + partner base URL exist. HUD may still be OASIS-only if /v1/syndicate/me failed; POSTs still hit the Partner API. */
+    btn.title = '';
+    if (action === 'claim') {
+      if (s && typeof s.bottlesUnclaimed === 'number') {
+        const left = s.bottlesUnclaimed;
+        btn.disabled = left <= 0;
+        if (btn.disabled) btn.title = 'No unclaimed bottles in allocation';
+        else btn.textContent = left === 1 ? 'Claim 1 bottle' : `Claim 1 (${left} left)`;
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Claim 1 bottle';
+        btn.title = 'No allocation summary yet — run seed-demo for your avatar or complete /v1/syndicate/me; API may still accept claim if you have rows.';
+      }
+    } else if (action === 'gift') {
+      btn.disabled = false;
+      btn.textContent = 'How transfer works';
+    } else if (action === 'preorder') {
+      btn.disabled = false;
+      btn.textContent = 'Place pre-order';
+    } else if (action === 'visit') {
+      btn.disabled = false;
+      btn.textContent = 'Log a visit';
+    }
+  });
+}
+
+let syndicateActionsWired = false;
+function wireSyndicateActions() {
+  if (syndicateActionsWired) return;
+  syndicateActionsWired = true;
+  const list = document.getElementById('quest-list');
+  if (!list) return;
+  list.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-syndicate-action]');
+    if (!btn || btn.disabled) return;
+    const action = btn.getAttribute('data-syndicate-action');
+    try {
+      if (action === 'claim') {
+        const confirmed = await syndicateModalConfirmClaim();
+        if (confirmed !== true) return;
+        await partnerPost('/v1/syndicate/claim', { bottleQty: 1 });
+        showSyndicateToast('Claim recorded — allocation updated.');
+        await refreshPassportAfterSyndicateAction();
+      } else if (action === 'gift') {
+        await syndicateModalGiftInfo();
+      } else if (action === 'preorder') {
+        const data = await syndicateModalPreorder();
+        if (!data) return;
+        await partnerPost('/v1/syndicate/preorder', data);
+        showSyndicateToast(`Pre-order saved · ${data.qty} bottle(s).`);
+        await refreshPassportAfterSyndicateAction();
+      } else if (action === 'visit') {
+        const data = await syndicateModalVisit();
+        if (data == null) return;
+        const note = data.note || '';
+        await partnerPost('/v1/syndicate/visit', { visitType: 'cellar_day', note });
+        showSyndicateToast('Visit logged on your Founders record.');
+        await refreshPassportAfterSyndicateAction();
+      }
+    } catch (err) {
+      showSyndicateToast(err?.message || String(err), true);
+    } finally {
+      updateSyndicateActionButtons(lastPassport);
+    }
+  });
+}
+
+function mockPassport() {
+  return {
+    name: 'Demo Founders member',
+    avatarId: 'demo-vine-001',
+    forestId: 'HYDE-FDR-001',
+    memberSince: '2024-03',
+    lastCheckin: 'Founders update · early release window',
+    tier: 'seed',
+    karma: 180,
+    treesRegistered: 48,
+    speciesDocumented: 48,
+    co2Annual: 0,
+    vintageLabel: '2024',
+    giftableCount: 6,
+    pgtHours: null,
+    questsDone: 2,
+    stamps: ['budbreak'],
+    source: 'mock',
+    activity: [
+      { ts: '10:12', msg: 'Pre-order · 6 bottles toward Founders annual entitlement', pts: '+pre' },
+      { ts: 'Yesterday', msg: 'Founders right transferred · new holder confirmed', pts: '+gift' },
+      { ts: 'Mon', msg: 'Founders allocation · 48 bottles tracked this vintage', pts: '' },
+      { ts: 'Sun', msg: 'Founders passport linked · Hyde End formative years', pts: '🍷' },
+    ],
+  };
+}
+
+function renderPassport(p) {
+  const initials = (p.name || '?').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+  document.getElementById('av-initials').textContent = initials;
+  document.getElementById('av-name').textContent = p.name || '—';
+  document.getElementById('member-since').textContent = p.memberSince || '—';
+  document.getElementById('last-checkin').textContent = p.lastCheckin || '—';
+  document.getElementById('passport-id').textContent = (p.avatarId || 'DEMO').toString().slice(0, 14).toUpperCase();
+  document.getElementById('forest-id-tag').textContent = p.forestId || 'Founders ref';
+
+  const tier = (p.tier || 'seed').toLowerCase();
+  const tierIdx = Math.max(0, TIERS.findIndex(t => t.id === tier));
+  const td = TIERS[tierIdx] || TIERS[0];
+  const nextTier = TIERS[tierIdx + 1];
+  const karma = p.karma || 0;
+
+  document.getElementById('tier-label').textContent = td.label;
+  document.getElementById('tier-label').className = `val badge ${tier}`;
+  document.getElementById('tier-display').textContent = td.label;
+  document.getElementById('tier-display').className = `tier-badge ${tier}`;
+
+  if (nextTier) {
+    const need = nextTier.min;
+    const prog = Math.min(100, Math.round((karma / need) * 100));
+    document.getElementById('karma-to-next').textContent = `${karma} / ${need} karma`;
+    document.getElementById('tier-bar').style.width = prog + '%';
+    document.getElementById('tier-pct').textContent = prog + '%';
+  } else {
+    document.getElementById('karma-to-next').textContent = 'Max tier';
+    document.getElementById('tier-bar').style.width = '100%';
+    document.getElementById('tier-pct').textContent = '100%';
+  }
+
+  const earned = new Set((p.stamps || ['budbreak']).map(s => s.toLowerCase()));
+  const stampsEl = document.getElementById('stamps');
+  stampsEl.innerHTML = CHAPTER_NAMES.map(ch => `
+    <div class="stamp ${earned.has(ch.key) ? 'earned' : 'locked'}">${ch.label}</div>
+  `).join('');
+
+  const chapterPct = Math.round((earned.size / CHAPTER_NAMES.length) * 100);
+  document.getElementById('chapter-pct').textContent = `${earned.size} / ${CHAPTER_NAMES.length} chapters`;
+  document.getElementById('chapter-bar').style.width = chapterPct + '%';
+  document.getElementById('chapter-bar-pct').textContent = chapterPct + '%';
+
+  let currentChapterLabel = 'Budbreak';
+  CHAPTER_NAMES.forEach(c => {
+    if (earned.has(c.key)) currentChapterLabel = c.label;
+  });
+  document.getElementById('current-chapter').textContent = currentChapterLabel;
+
+  document.getElementById('c-trees').textContent = p.treesRegistered ?? 0;
+  document.getElementById('c-karma').textContent = karma;
+  document.getElementById('c-quests').textContent = p.questsDone ?? 0;
+  document.getElementById('c-co2').textContent =
+    p.vintageLabel != null && String(p.vintageLabel).length
+      ? String(p.vintageLabel)
+      : (typeof p.co2Annual === 'number' && p.co2Annual > 0 ? p.co2Annual.toFixed(1) : '—');
+
+  const arc = document.getElementById('karma-arc');
+  const circumference = 251.2;
+  const pctArc = Math.min(1, karma / 5000);
+  arc.style.strokeDashoffset = circumference * (1 - pctArc);
+  document.getElementById('karma-val').textContent = String(karma);
+  document.getElementById('species-count').textContent = p.speciesDocumented ?? '—';
+  document.getElementById('pgt-hours').textContent =
+    p.giftableCount != null ? String(p.giftableCount) : (p.pgtHours != null ? String(p.pgtHours) : '—');
+
+  const nextK = nextTier ? nextTier.min : 5000;
+  const prevK = td.min;
+  const span = nextTier ? nextK - prevK : 1;
+  const into = nextTier ? Math.max(0, karma - prevK) : span;
+  document.getElementById('next-milestone').textContent = nextTier
+    ? `${nextK} karma → ${nextTier.label}`
+    : 'Custodian — circle complete';
+  document.getElementById('milestone-bar').style.width = nextTier
+    ? Math.min(100, Math.round((into / span) * 100)) + '%'
+    : '100%';
+  document.getElementById('milestone-pct').textContent = nextTier
+    ? `${Math.min(karma, nextK)}/${nextK}`
+    : 'max';
+
+  const dots = document.querySelectorAll('#quest-list .quest-dot');
+  const s = p.partner?.summary;
+  if (s && typeof s.bottlesAllocated === 'number') {
+    document.getElementById('q-trees-progress').textContent = `${s.bottlesClaimed} / ${s.bottlesAllocated} claimed`;
+    if (dots[0]) {
+      dots[0].classList.remove('active', 'done');
+      if ((s.bottlesUnclaimed ?? 0) <= 0) dots[0].classList.add('done');
+      else dots[0].classList.add('active');
+    }
+    if (dots[2]) {
+      dots[2].classList.toggle('done', (s.preorderCount ?? 0) > 0);
+      dots[2].classList.remove('active');
+    }
+    const visitCount = (p.partner?.visits && p.partner.visits.length) || 0;
+    if (dots[3]) {
+      dots[3].classList.toggle('done', visitCount > 0);
+      dots[3].classList.remove('active');
+    }
+  } else {
+    const trees = p.treesRegistered || 0;
+    const bottleCap = 12;
+    document.getElementById('q-trees-progress').textContent = `${Math.min(trees, bottleCap)} / ${bottleCap} bottles`;
+    if (dots[0]) {
+      dots[0].classList.remove('active', 'done');
+      if (trees >= bottleCap) dots[0].classList.add('done');
+      else dots[0].classList.add('active');
+    }
+    if (dots[2]) dots[2].classList.remove('done');
+    if (dots[3]) dots[3].classList.remove('done');
+  }
+
+  lastPassport = p;
+  renderActivityFeed(p, lastTelegramMessages);
+
+  document.getElementById('member-status').textContent =
+    p.source === 'partner_api' ? 'PARTNER' : p.source === 'oasis' ? 'LINKED' : 'DEMO';
+
+  updateSyndicateActionButtons(p);
+}
+
+/**
+ * Download skybox with fetch → Blob → object URL → TextureLoader.
+ * Avoids WebGL "cross-origin image" failures that still happen with TextureLoader + remote URL on some setups.
+ */
+async function loadEquirectTextureFromUrl(url, onProgress) {
+  const res = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'force-cache' });
+  if (!res.ok) throw new Error(`Skybox HTTP ${res.status}`);
+  const total = parseInt(res.headers.get('Content-Length') || '0', 10) || 0;
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('Skybox: no response body');
+  const chunks = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.byteLength;
+    if (total && typeof onProgress === 'function') {
+      onProgress(Math.min(100, Math.round((received / total) * 100)), received, total);
+    }
+  }
+  const blob = new Blob(chunks, { type: res.headers.get('Content-Type') || 'image/jpeg' });
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    return await new Promise((resolve, reject) => {
+      const loader = new THREE.TextureLoader();
+      loader.load(objectUrl, resolve, undefined, reject);
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function startViewer(imageUrl) {
+  const hintEl = document.getElementById('skybox-missing-hint');
+  const container = document.getElementById('viewport');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0c0608);
+  const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+  camera.position.set(0, 0, 0.1);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  container.appendChild(renderer.domElement);
+
+  const revealPassport = () => {
+    setLoad(100, 'Passport ready');
+    setTimeout(() => {
+      document.getElementById('loading').classList.add('fade-out');
+      setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 900);
+    }, 400);
+  };
+
+  const applyTexture = (tex) => {
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    scene.background = tex;
+    revealPassport();
+  };
+
+  const failSkybox = (err, triedFallback) => {
+    console.error('Skybox load failed:', err);
+    hintEl.classList.remove('hidden');
+    scene.background = new THREE.Color(0x0c0608);
+    setLoad(100, triedFallback
+      ? 'Skybox failed after fetch + direct load. Serve this folder over HTTP (not file://) and check CORS on the image host.'
+      : 'Skybox download failed — check network.');
+    loadStatus.style.color = '#e8a090';
+    revealPassport();
+  };
+
+  if (imageUrl) {
+    hintEl.classList.add('hidden');
+    setLoad(70, 'Downloading skybox (large image, may take a bit)…');
+    loadEquirectTextureFromUrl(imageUrl, (pct) => {
+      setLoad(70 + Math.floor(pct * 0.27), `Downloading skybox · ${pct}%`);
+    })
+      .then(applyTexture)
+      .catch((err) => {
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+        loader.load(
+          imageUrl,
+          (tex) => applyTexture(tex),
+          undefined,
+          (e2) => failSkybox(e2, true)
+        );
+      });
+  } else {
+    hintEl.classList.remove('hidden');
+    setLoad(100, 'No skybox URL — see note below');
+    revealPassport();
+  }
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.rotateSpeed = 0.45;
+  controls.minDistance = 0.01;
+  controls.maxDistance = 0.5;
+  controls.target.set(0, 0, 0);
+
+  let autoRotate = true;
+  let autoAngle = 0;
+  renderer.domElement.addEventListener('pointerdown', () => {
+    autoRotate = false;
+    document.getElementById('drag-hint').classList.add('hide');
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (autoRotate) {
+      autoAngle += 0.00012;
+      camera.position.x = Math.sin(autoAngle) * 0.1;
+      camera.position.z = Math.cos(autoAngle) * 0.1;
+      camera.lookAt(0, 0, 0);
+    }
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  setTimeout(() => document.getElementById('drag-hint').classList.add('hide'), 6000);
+}
+
+async function enterPassportExperience() {
+  hidePassportAuthGate();
+  setLoad(5, 'Authenticating…');
+
+  let passport = await fetchPartnerPassport();
+  if (!passport) passport = await fetchOasisPassport();
+  if (!passport) passport = mockPassport();
+
+  setLoad(18, 'Rendering passport…');
+  wireSyndicateActions();
+  renderPassport(passport);
+  setupOasisAuthUI();
+  wireTelegramFeed();
+  setupTelegramConnectUI();
+
+  setLoad(48, 'Resolving skybox…');
+  let skyImage = DEFAULT_HYDE_END_SKYBOX;
+  try {
+    const resolved = await resolveSkyboxImageUrl();
+    if (resolved) skyImage = resolved;
+  } catch (e) {
+    console.warn('Skybox resolve failed:', e);
+    loadStatus.style.color = '#e8a090';
+    setLoad(52, `${e?.message || e} — using default vineyard skybox or add ?skyboxUrl=`);
+  }
+
+  setLoad(62, 'Starting 3D view…');
+  startViewer(skyImage);
+}
+
+(async () => {
+  if (!shouldSkipAuthGate()) {
+    showPassportAuthGate();
+    setupPassportAuthGate(async () => {
+      hidePassportAuthGate();
+      const loading = document.getElementById('loading');
+      if (loading) loading.style.display = 'flex';
+      await enterPassportExperience();
+    });
+    return;
+  }
+  await enterPassportExperience();
+})();
+</script>
+</body>
+</html>

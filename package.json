@@ -1,0 +1,8 @@
+{
+  "name": "hyde-end-farm",
+  "private": true,
+  "description": "Hyde End Vineyard passport demo + Partner API (Vercel)",
+  "scripts": {
+    "build": "cd partner-api && npm install && npm run build"
+  }
+}

@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Pulmón Verde — jungle night + moss (parallels conservation passport) */
+:root {
+  --pv-void: #030a06;
+  --pv-surface: #06120c;
+  --pv-elevated: #0c1812;
+  --pv-border: rgba(122, 184, 122, 0.22);
+  --pv-moss: #7ab87a;
+  --pv-moss-deep: #5a8f5a;
+  --pv-gold: #c9a84c;
+  --pv-teal: #3db8a8;
+  --pv-dim: rgba(232, 240, 228, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  color: #e8f0e4;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: var(--pv-void);
+  background-image:
+    radial-gradient(ellipse 100% 60% at 50% -15%, rgba(45, 90, 58, 0.28) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 50%, rgba(20, 48, 36, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 0% 80%, rgba(30, 60, 45, 0.15) 0%, transparent 45%);
+}
+
+/* Main content: subtle canopy line (Union = plain; Pulmón = soft moss edge) */
+.pv-main {
+  background: linear-gradient(180deg, rgba(6, 18, 12, 0.35) 0%, transparent 120px);
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(90, 143, 90, 0.35);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 184, 122, 0.45);
+}
+
+/* Message bubbles — jungle outbound (moss), inbound (dark peat) */
+.bubble-out {
+  background: rgba(122, 184, 122, 0.12);
+  border: 0.5px solid rgba(122, 184, 122, 0.28);
+  border-radius: 16px 16px 4px 16px;
+}
+
+.bubble-in {
+  background: #121a16;
+  border: 0.5px solid rgba(122, 184, 122, 0.12);
+  border-radius: 16px 16px 16px 4px;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 1.5px rgba(122, 184, 122, 0.35);
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.25s ease forwards;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-active {
+  color: var(--pv-moss);
+  background: rgba(122, 184, 122, 0.08);
+}
+
+.nav-active .nav-icon {
+  color: var(--pv-moss);
+}
+
+/* Display titles — passport serif for “The Guide” moments */
+.pv-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}

@@ -1,0 +1,8 @@
+{
+  "rewrites": [{ "source": "/", "destination": "/passport.html" }],
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "partner-api/dist/**"
+    }
+  }
+}

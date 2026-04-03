@@ -1,0 +1,15 @@
+.DS_Store
+*.log
+.env
+.env.local
+
+# Partner API — secrets & deps (built on Vercel)
+partner-api/node_modules/
+partner-api/dist/
+partner-api/.env
+partner-api/data/registry.local.json
+
+# CRM copy (optional local dev)
+crm-from-guide-messaging/node_modules/
+crm-from-guide-messaging/.next/
+crm-from-guide-messaging/out/
